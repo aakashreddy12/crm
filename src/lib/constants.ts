@@ -1,0 +1,22 @@
+export const PROJECT_STAGES = [
+  'Advance payment done',
+  'Approvals to be received',
+  'Approvals Received/shared to customer',
+  'First payment collected/loan process started',
+  'Loan Approved',
+  'Structure ordered/panels ordered',
+  'Structure arrived/panels arrived',
+  '2nd payment collected',
+  'Installation pending',
+  'Installation Done',
+  'Net meter Application(yet to start)',
+  'Net meter Application(If applicable)',
+  'Net Meter Received',
+  'Net Meter Installation completed',
+  'Inspection pending',
+  'Approved Inspection',
+  'Subsisdy(in progress)',
+  'Subsidy disbursed',
+  'Handover of Docs',
+  'Final payment(done)/completed'
+]; 
