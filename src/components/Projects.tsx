@@ -45,6 +45,7 @@ interface Project {
   status: string;
   current_stage: string;
   start_date: string;
+  kwh: number;
 }
 
 // Utility function to calculate elapsed time since start date
@@ -92,6 +93,7 @@ const Projects = () => {
     proposal_amount: '',
     advance_payment: '',
     start_date: '',
+    kwh: '',
   });
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
@@ -170,6 +172,7 @@ const Projects = () => {
         status: 'active',
         current_stage: 'Advance payment done',
         start_date: startDate,
+        kwh: parseFloat(newProject.kwh),
       };
 
       const { error } = await supabase
@@ -208,6 +211,7 @@ const Projects = () => {
         proposal_amount: '',
         advance_payment: '',
         start_date: '',
+        kwh: '',
       });
       fetchProjects();
     } catch (error) {
@@ -336,6 +340,7 @@ const Projects = () => {
               <Th>Balance</Th>
               <Th>Start Date</Th>
               <Th>Duration</Th>
+              <Th>KWH</Th>
               <Th>Status</Th>
               <Th>Current Stage</Th>
               <Th>Actions</Th>
@@ -374,6 +379,9 @@ const Projects = () => {
                   <Tooltip label={project.start_date ? `Project started on ${new Date(project.start_date).toLocaleDateString()}` : 'Start date not set'}>
                     <Text>{calculateElapsedTime(project.start_date)}</Text>
                   </Tooltip>
+                </Td>
+                <Td onClick={() => navigate(`/projects/${project.id}`)} cursor="pointer">
+                  {project.kwh || 'N/A'}
                 </Td>
                 <Td onClick={() => navigate(`/projects/${project.id}`)} cursor="pointer">
                   <Badge colorScheme={project.status === 'active' ? 'green' : 'blue'}>
@@ -526,6 +534,16 @@ const Projects = () => {
                   value={newProject.advance_payment}
                   onChange={handleInputChange}
                   max={newProject.proposal_amount}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>KWH</FormLabel>
+                <Input
+                  name="kwh"
+                  type="number"
+                  value={newProject.kwh}
+                  onChange={handleInputChange}
                 />
               </FormControl>
 

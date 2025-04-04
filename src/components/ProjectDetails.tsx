@@ -1,4 +1,4 @@
-﻿import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
@@ -62,6 +62,7 @@ interface Project {
   payment_mode: 'Loan' | 'Cash';
   created_at: string;
   payment_history: PaymentHistory[];
+  kwh: number;
 }
 
 const getTimeElapsed = (timestamp: string) => {
@@ -429,7 +430,7 @@ const ProjectDetails = () => {
                   <Tr>
                     <Td>{new Date(project.created_at).toLocaleDateString()}</Td>
                     <Td>Advance Payment</Td>
-                    <Td isNumeric>â‚¹{project.advance_payment.toLocaleString()}</Td>
+                    <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
                     <Td>{getTimeElapsed(project.created_at)}</Td>
                     <Td>
                       {hasReceiptAccess() && (
@@ -449,7 +450,7 @@ const ProjectDetails = () => {
                   <Tr key={payment.id}>
                     <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
                     <Td>Regular Payment</Td>
-                    <Td isNumeric>â‚¹{payment.amount.toLocaleString()}</Td>
+                    <Td isNumeric>₹{payment.amount.toLocaleString()}</Td>
                     <Td>{getTimeElapsed(payment.created_at)}</Td>
                     <Td>
                       {hasReceiptAccess() && (
@@ -492,21 +493,21 @@ const ProjectDetails = () => {
             <VStack align="start" spacing={4}>
               <HStack justify="space-between" w="full">
                 <Text fontWeight="medium">Total Amount:</Text>
-                <Text>â‚¹{project.proposal_amount.toLocaleString()}</Text>
+                <Text>₹{project.proposal_amount.toLocaleString()}</Text>
               </HStack>
               <HStack justify="space-between" w="full">
                 <Text fontWeight="medium">Advance Payment:</Text>
-                <Text color="blue.500">â‚¹{project.advance_payment.toLocaleString()}</Text>
+                <Text color="blue.500">₹{project.advance_payment.toLocaleString()}</Text>
               </HStack>
               <HStack justify="space-between" w="full">
                 <Text fontWeight="medium">Total Paid:</Text>
-                <Text color="green.500">â‚¹{(project.advance_payment + (project.paid_amount || 0)).toLocaleString()}</Text>
+                <Text color="green.500">₹{(project.advance_payment + (project.paid_amount || 0)).toLocaleString()}</Text>
               </HStack>
               <Divider />
               <HStack justify="space-between" w="full">
                 <Text fontWeight="bold">Balance Amount:</Text>
                 <Text fontWeight="bold" color="red.500">
-                  â‚¹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))).toLocaleString()}
+                  ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))).toLocaleString()}
                 </Text>
               </HStack>
             </VStack>
@@ -538,6 +539,11 @@ const ProjectDetails = () => {
                 <Text fontWeight="medium">Address:</Text>
                 <Text>{project.address}</Text>
               </HStack>
+              <Divider />
+              <HStack justify="space-between" w="full">
+                <Text fontWeight="medium">KWH:</Text>
+                <Text>{project.kwh || 'N/A'}</Text>
+              </HStack>
             </VStack>
           </CardBody>
         </Card>
@@ -558,7 +564,7 @@ const ProjectDetails = () => {
                   disabled={project.current_stage === PROJECT_STAGES[0]}
                   size="sm"
                 >
-                  â† Previous Stage
+                  ← Previous Stage
                 </Button>
                 <Button 
                   colorScheme="blue"
@@ -566,7 +572,7 @@ const ProjectDetails = () => {
                   disabled={project.current_stage === PROJECT_STAGES[PROJECT_STAGES.length - 1]}
                   size="sm"
                 >
-                  Next Stage â†’
+                  Next Stage →
                 </Button>
               </HStack>
             </HStack>
@@ -609,7 +615,7 @@ const ProjectDetails = () => {
                 </Button>
               </HStack>
               <Text fontSize="sm" color="gray.500">
-                Maximum payment amount: â‚¹{project.balance_amount.toLocaleString()}
+                Maximum payment amount: ₹{project.balance_amount.toLocaleString()}
               </Text>
             </VStack>
           </CardBody>
