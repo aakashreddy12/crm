@@ -34,54 +34,43 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           loadImage('/images/signature.png')
         ]);
 
-        // Set the background with black borders (left and right)
-        doc.setFillColor(12, 15, 18); // Dark color for borders
-        doc.rect(0, 0, 60, 297, 'F'); // Left border
-        doc.rect(150, 0, 60, 297, 'F'); // Right border
-        
-        // Set white space in the middle
-        doc.setFillColor(255, 255, 255);
-        doc.rect(60, 0, 90, 297, 'F');
-        
         // Set page margins
         const margin = 20;
-        const contentAreaStart = 60; // where the white area starts
-        const contentAreaWidth = 90; // width of the white area
-        const contentCenter = contentAreaStart + contentAreaWidth / 2;
+        const pageWidth = doc.internal.pageSize.width;
+        const pageCenter = pageWidth / 2;
         
-        // Company details on the left side of the white area
+        // Set white background for the whole page
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, pageWidth, 297, 'F');
+        
+        // Company details on the left
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text('Axiso Green Energies Private Limited', contentAreaStart + 5, 45);
+        doc.setFontSize(11);
+        doc.text('Axiso Green Energies Private Limited', margin, 25);
         
         // Company details in lighter text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text('Telangana', contentAreaStart + 5, 50);
-        doc.text('India', contentAreaStart + 5, 55);
-        doc.text('GSTIN 36ABCA4478M1Z9', contentAreaStart + 5, 60);
-        doc.text('admin@axisogreen.in', contentAreaStart + 5, 65);
-        doc.text('www.axisogreen.in', contentAreaStart + 5, 70);
+        doc.setFontSize(9);
+        doc.text('Telangana', margin, 32);
+        doc.text('India', margin, 39);
+        doc.text('GSTIN 36ABCA4478M1Z9', margin, 46);
+        doc.text('admin@axisogreen.in', margin, 53);
+        doc.text('www.axisogreen.in', margin, 60);
         
-        // Add logo at right side of white area
+        // Add logo at right side
         if (logoImg) {
-          doc.addImage(logoImg, 'PNG', contentAreaStart + 45, 45, 40, 25);
+          doc.addImage(logoImg, 'PNG', pageWidth - margin - 45, 25, 45, 30);
         }
         
         // Add horizontal line
-        doc.setLineWidth(0.1);
-        doc.line(contentAreaStart + 5, 75, contentAreaStart + contentAreaWidth - 5, 75);
+        doc.setLineWidth(0.5);
+        doc.line(margin, 70, pageWidth - margin, 70);
 
         // Payment Receipt title
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         const titleText = 'PAYMENT RECEIPT';
-        doc.text(titleText, contentCenter, 85, { align: 'center' });
-        
-        // Table layout for payment details
-        const startY = 95;
-        const rowHeight = 15; // Height of each row
-        const colWidth = 40; // Width of each column
+        doc.text(titleText, pageCenter, 85, { align: 'center' });
         
         // Background color for data cells - #97afc2 with 29% opacity
         const r = 151, g = 175, b = 194; // #97afc2 in RGB
@@ -94,63 +83,81 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         const bgColorG = blendWithWhite(g, 0.29);
         const bgColorB = blendWithWhite(b, 0.29);
         
-        // Create table headers and rows with styling
-        const createTableRow = (label: string, value: string, y: number, isAmount: boolean = false) => {
-          // Label column
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor(0, 0, 0);
-          doc.text(label, contentAreaStart + 5, y + 7);
-          
-          // Value cell with light blue background
-          if (!isAmount) {
-            doc.setFillColor(bgColorR, bgColorG, bgColorB);
-            doc.rect(contentAreaStart + colWidth, y, colWidth, rowHeight, 'F');
-          } else {
-            // Green background for amount
-            doc.setFillColor(140, 198, 63); // Light green
-            doc.rect(contentAreaStart + colWidth, y, colWidth, rowHeight, 'F');
-          }
-          
-          // Value text
-          doc.setFont(isAmount ? 'helvetica-bold' : 'helvetica', isAmount ? 'bold' : 'normal');
-          doc.setFontSize(isAmount ? 10 : 8);
-          doc.setTextColor(isAmount ? 255 : 0, isAmount ? 255 : 0, isAmount ? 255 : 0);
-          doc.text(value, contentAreaStart + colWidth + 5, y + 7);
-        };
+        // Table layout for payment details
+        const startY = 100;
+        const rowHeight = 15;
+        const labelColWidth = 40;
+        const valueColWidth = 80;
+        const amountColWidth = 40;
         
-        // Generate a reference number
+        // Generate a reference number (or use a fixed one like in the image)
         const refNumber = 'ZBYKUQLSS';
         
-        // Create table rows
-        createTableRow('Payment Date', date, startY);
-        createTableRow('Reference Number', refNumber, startY + rowHeight);
-        createTableRow('Payment Mode', paymentMode, startY + rowHeight * 2);
-        createTableRow('Place Of Supply', `${placeOfSupply} (36)`, startY + rowHeight * 3);
-        createTableRow('Amount Received In Words', `Indian Rupee Ten Thousand Only`, startY + rowHeight * 4);
-        
-        // Amount with green background
-        createTableRow('Amount Received', `Rs.${amount.toLocaleString()}`, startY + rowHeight * 0.5, true);
-        
-        // Received from section
+        // Draw table labels
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setTextColor(0, 0, 0);
-        doc.text('Received From', contentAreaStart + 5, startY + rowHeight * 6);
         
-        // Received from value with background
-        doc.setFillColor(bgColorR, bgColorG, bgColorB);
-        doc.rect(contentAreaStart + 5, startY + rowHeight * 6 + 2, colWidth, rowHeight, 'F');
-        doc.text(receivedFrom, contentAreaStart + 10, startY + rowHeight * 6 + 9);
+        // Label column
+        doc.text('Payment Date', margin, startY + 7);
+        doc.text('Reference Number', margin, startY + rowHeight + 7);
+        doc.text('Payment Mode', margin, startY + rowHeight * 2 + 7);
+        doc.text('Place Of Supply', margin, startY + rowHeight * 3 + 7);
+        doc.text('Amount Received In', margin, startY + rowHeight * 4 + 7);
+        doc.text('Words', margin, startY + rowHeight * 5 + 7);
+        
+        // Received from
+        doc.text('Received From', margin, startY + rowHeight * 7 + 7);
+        
+        // Value cells with background
+        // Function to draw a cell with background
+        const drawCell = (x: number, y: number, width: number, height: number, text: string, isGreen: boolean = false) => {
+          if (isGreen) {
+            doc.setFillColor(140, 198, 63); // Green for amount
+          } else {
+            doc.setFillColor(bgColorR, bgColorG, bgColorB); // Light blue with opacity
+          }
+          doc.rect(x, y, width, height, 'F');
+          
+          if (isGreen) {
+            doc.setTextColor(255, 255, 255); // White text for green background
+            doc.setFont('helvetica', 'bold');
+          } else {
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+          }
+          
+          doc.text(text, x + 5, y + 10);
+        };
+        
+        // Calculate positions
+        const valueColX = margin + labelColWidth + 10;
+        const amountColX = valueColX + valueColWidth + 5;
+        
+        // Draw cells
+        drawCell(valueColX, startY, valueColWidth, rowHeight, date);
+        drawCell(valueColX, startY + rowHeight, valueColWidth, rowHeight, refNumber);
+        drawCell(valueColX, startY + rowHeight * 2, valueColWidth, rowHeight, 'Bank Transfer');
+        drawCell(valueColX, startY + rowHeight * 3, valueColWidth, rowHeight, `${placeOfSupply} (36)`);
+        
+        // Amount in words (spanning two rows)
+        drawCell(valueColX, startY + rowHeight * 4, valueColWidth, rowHeight * 2, 'Indian Rupee Ten Thousand Only');
+        
+        // Amount cell with green background
+        drawCell(amountColX, startY, amountColWidth, rowHeight, `Rs.${amount.toLocaleString()}`, true);
+        
+        // Received from cell
+        drawCell(margin, startY + rowHeight * 7 + 10, labelColWidth, rowHeight, receivedFrom);
         
         // Add signature at bottom right
         if (signatureImg) {
-          doc.addImage(signatureImg, 'PNG', contentAreaStart + 50, startY + rowHeight * 6 + 5, 30, 15);
+          doc.addImage(signatureImg, 'PNG', amountColX, startY + rowHeight * 7 + 10, 40, 20);
           
           // Add signature text
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8);
-          doc.text('Authorized Signature', contentAreaStart + 50, startY + rowHeight * 6 + 25);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Authorized Signature', amountColX, startY + rowHeight * 7 + 35);
         }
         
         // Save the PDF with a filename based on customer and date
