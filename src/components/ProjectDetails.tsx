@@ -264,12 +264,17 @@ const ProjectDetails = () => {
   const handleDownloadReceipt = (amount: number, date: string) => {
     const container = document.createElement('div');
     const root = createRoot(container);
+    
+    // Format date as DD-MM-YYYY
+    const dateObj = new Date(date);
+    const formattedDate = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
+    
     root.render(
       <PaymentReceipt
-        date={new Date(date).toLocaleDateString()}
+        date={formattedDate}
         amount={amount}
         receivedFrom={project.customer_name}
-        paymentMode={project.payment_mode}
+        paymentMode={project.payment_mode || 'Bank Transfer'}
         placeOfSupply="Telangana"
       />
     );
@@ -381,30 +386,6 @@ const ProjectDetails = () => {
     } catch (error) {
       console.error('Error updating stage:', error);
     }
-  };
-
-  const downloadReceipt = (amount: number, date: string) => {
-    const receiptProps = {
-      date: date,
-      amount: amount,
-      receivedFrom: project?.customer_name || '',
-      paymentMode: project?.payment_mode || 'Bank Transfer',
-      placeOfSupply: 'Telangana (36)'
-    };
-
-    // Create a temporary container
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    // Create root and render
-    const root = createRoot(container);
-    root.render(<PaymentReceipt {...receiptProps} />);
-
-    // Cleanup after PDF is generated
-    setTimeout(() => {
-      root.unmount();
-      document.body.removeChild(container);
-    }, 500); // Increased timeout to ensure PDF generation completes
   };
 
   const renderPaymentHistory = () => {
