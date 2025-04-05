@@ -277,6 +277,7 @@ const ProjectDetails = () => {
         receivedFrom={project.customer_name}
         paymentMode={project.payment_mode || 'Bank Transfer'}
         placeOfSupply="Telangana"
+        customerAddress={project.address}
       />
     );
     // Clean up after a short delay
