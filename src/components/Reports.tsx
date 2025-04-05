@@ -26,6 +26,7 @@ interface Project {
   current_stage: string;
   proposal_amount: number;
   created_at: string;
+  kwh: number;
 }
 
 const Reports = () => {
@@ -34,9 +35,10 @@ const Reports = () => {
     activeProjects: 0,
     completedProjects: 0,
     totalRevenue: 0,
+    totalKWH: 0,
   });
   const [stageStats, setStageStats] = useState<Record<string, number>>({});
-  const [monthlyStats, setMonthlyStats] = useState<Record<string, number>>({});
+  const [monthlyKWH, setMonthlyKWH] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -71,12 +73,14 @@ const Reports = () => {
         const active = projects.filter((p: Project) => p.status === 'active');
         const completed = projects.filter((p: Project) => p.status === 'completed');
         const totalRevenue = projects.reduce((sum: number, p: Project) => sum + (p.proposal_amount || 0), 0);
+        const totalKWH = projects.reduce((sum: number, p: Project) => sum + (p.kwh || 0), 0);
 
         setStats({
           totalCustomers: projects.length,
           activeProjects: active.length,
           completedProjects: completed.length,
           totalRevenue,
+          totalKWH,
         });
 
         // Calculate projects in each stage (excluding deleted projects)
@@ -86,25 +90,25 @@ const Reports = () => {
         });
         setStageStats(stages);
 
-        // Calculate monthly project counts for the selected year
-        const monthCounts: Record<string, number> = {
+        // Calculate monthly KWH usage for the selected year
+        const monthlyKWHData: Record<string, number> = {
           'January': 0, 'February': 0, 'March': 0, 'April': 0, 'May': 0, 'June': 0,
           'July': 0, 'August': 0, 'September': 0, 'October': 0, 'November': 0, 'December': 0
         };
         
-        const monthNames = Object.keys(monthCounts);
+        const monthNames = Object.keys(monthlyKWHData);
         
         projects.forEach((project: Project) => {
           const createdDate = new Date(project.created_at);
           const projectYear = createdDate.getFullYear();
           const projectMonth = createdDate.getMonth(); // 0-11
           
-          if (projectYear === selectedYear) {
-            monthCounts[monthNames[projectMonth]]++;
+          if (projectYear === selectedYear && project.kwh) {
+            monthlyKWHData[monthNames[projectMonth]] += project.kwh;
           }
         });
         
-        setMonthlyStats(monthCounts);
+        setMonthlyKWH(monthlyKWHData);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -114,8 +118,8 @@ const Reports = () => {
     }
   };
 
-  // Calculate the maximum project count for any month to set the bar scale
-  const maxMonthlyCount = monthlyStats ? Math.max(...Object.values(monthlyStats), 1) : 1;
+  // Calculate the maximum KWH for any month to set the bar scale
+  const maxMonthlyKWH = monthlyKWH ? Math.max(...Object.values(monthlyKWH), 1) : 1;
 
   if (isLoading) {
     return (
@@ -139,7 +143,7 @@ const Reports = () => {
     <Box>
       <Text fontSize="2xl" mb="6">Reports & Analytics</Text>
 
-      <Grid templateColumns="repeat(4, 1fr)" gap={6} mb="8">
+      <Grid templateColumns="repeat(5, 1fr)" gap={6} mb="8">
         <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
           <StatLabel>Total Customers</StatLabel>
           <StatNumber>{stats.totalCustomers}</StatNumber>
@@ -159,11 +163,16 @@ const Reports = () => {
           <StatLabel>Total Revenue</StatLabel>
           <StatNumber>₹{stats.totalRevenue.toLocaleString()}</StatNumber>
         </ChakraStat>
+
+        <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
+          <StatLabel>Total KWH</StatLabel>
+          <StatNumber>{stats.totalKWH.toLocaleString()}</StatNumber>
+        </ChakraStat>
       </Grid>
 
       <Box bg="white" p="6" borderRadius="lg" boxShadow="sm" mb="8">
         <Flex justify="space-between" align="center" mb="4">
-          <Text fontSize="lg" fontWeight="bold">Projects by Month</Text>
+          <Text fontSize="lg" fontWeight="bold">KWH Usage by Month</Text>
           <Select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -178,26 +187,28 @@ const Reports = () => {
         </Flex>
         
         <Flex height="250px" alignItems="flex-end" mb="2">
-          {Object.entries(monthlyStats).map(([month, count]) => (
+          {Object.entries(monthlyKWH).map(([month, kwh]) => (
             <VStack key={month} flex="1" spacing="0">
               <Box 
-                height={`${Math.max((count / maxMonthlyCount) * 200, count ? 20 : 0)}px`}
+                height={`${Math.max((kwh / maxMonthlyKWH) * 200, kwh ? 20 : 0)}px`}
                 width="70%" 
                 bg="green.500"
                 borderTopRadius="md"
                 position="relative"
               >
-                {count > 0 && (
+                {kwh > 0 && (
                   <Text 
                     position="absolute"
-                    top="-20px"
+                    top="-25px"
                     left="50%"
                     transform="translateX(-50%)"
                     color="black"
                     fontWeight="bold"
-                    fontSize="sm"
+                    fontSize="xs"
+                    width="100px"
+                    textAlign="center"
                   >
-                    {count}
+                    {kwh.toLocaleString()} KWH
                   </Text>
                 )}
               </Box>
