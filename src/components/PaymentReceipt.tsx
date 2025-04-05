@@ -36,7 +36,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           loadImage('/images/signature.png')
         ]);
 
-        // Set page margins and layout dimensions
+        // Set page dimensions
         const margin = 20;
         const pageWidth = doc.internal.pageSize.width;
         
@@ -84,44 +84,36 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         const bgColorG = blendWithWhite(g, 0.29);
         const bgColorB = blendWithWhite(b, 0.29);
         
-        // Improved table layout with proper alignment
+        // Set up table dimensions to match the example image
         const startY = 100;
         const rowHeight = 15;
         
-        // Fixed column setup for better alignment
-        const labelWidth = 100;
-        const dataWidth = 180;
-        const amountBoxWidth = 60;
+        // Set up cell dimensions
+        const labelColWidth = 80;
+        const dataColWidth = 120;
+        const amountBoxWidth = 65;
         
-        // Draw labels column
+        // Layout coordinates
+        const labelX = margin;
+        const dataX = margin + labelColWidth;
+        const amountX = pageWidth - margin - amountBoxWidth;
+        
+        // Reference ID
+        const refNumber = 'ZBYKUQLSS';
+        
+        // Draw labels - left aligned
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(15);
         doc.setTextColor(0, 0, 0);
         
-        const labelX = margin;
-        const dataX = margin + labelWidth + 10;
-        const amountX = pageWidth - margin - amountBoxWidth;
+        doc.text('Payment Date', labelX, startY + 7);
+        doc.text('Reference Number', labelX, startY + rowHeight + 7);
+        doc.text('Payment Mode', labelX, startY + rowHeight * 2 + 7);
+        doc.text('Place Of Supply', labelX, startY + rowHeight * 3 + 7);
+        doc.text('Amount Received In', labelX, startY + rowHeight * 4 + 7);
+        doc.text('Words', labelX, startY + rowHeight * 5 + 7);
         
-        // Draw labels
-        const labels = [
-          'Payment Date',
-          'Reference Number',
-          'Payment Mode',
-          'Place Of Supply',
-          'Amount Received In',
-          'Words'
-        ];
-        
-        // Reference ID - fixed to match image
-        const refNumber = 'ZBYKUQLSS';
-        
-        // Draw labels
-        labels.forEach((label, index) => {
-          const y = startY + (index * rowHeight) + 7;
-          doc.text(label, labelX, y);
-        });
-        
-        // Helper function to draw data cells with background
+        // Function to draw data cells with background
         const drawDataCell = (
           x: number,
           y: number,
@@ -139,62 +131,61 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(fontSize);
           
+          // Position text in cell
           const textY = y + (height / 2) + (fontSize / 6);
           doc.text(text, x + 5, textY);
         };
         
-        // Draw data cells with proper alignment
-        drawDataCell(dataX, startY, dataWidth - amountBoxWidth - 10, rowHeight, date);
-        drawDataCell(dataX, startY + rowHeight, dataWidth - amountBoxWidth - 10, rowHeight, refNumber);
-        drawDataCell(dataX, startY + (2 * rowHeight), dataWidth - amountBoxWidth - 10, rowHeight, paymentMode);
-        drawDataCell(dataX, startY + (3 * rowHeight), dataWidth - amountBoxWidth - 10, rowHeight, `${placeOfSupply} (36)`);
+        // Draw data cells for payment details
+        drawDataCell(dataX, startY, dataColWidth, rowHeight, date);
+        drawDataCell(dataX, startY + rowHeight, dataColWidth, rowHeight, refNumber);
+        drawDataCell(dataX, startY + rowHeight * 2, dataColWidth, rowHeight, paymentMode);
+        drawDataCell(dataX, startY + rowHeight * 3, dataColWidth, rowHeight, `${placeOfSupply} (36)`);
         
-        // Amount in words (spanning two rows)
+        // Amount in words - spanning two rows
         const amountInWords = 'Indian Rupee Ten Thousand Only';
-        drawDataCell(dataX, startY + (4 * rowHeight), dataWidth - amountBoxWidth - 10, rowHeight * 2, amountInWords);
+        drawDataCell(dataX, startY + rowHeight * 4, dataColWidth, rowHeight * 2, amountInWords);
         
-        // Amount box with green background
+        // Amount box with green background - positioned exactly like the example
         doc.setFillColor(140, 198, 63); // Green color
-        doc.rect(amountX, startY, amountBoxWidth, rowHeight * 2, 'F');
+        doc.rect(amountX, startY, amountBoxWidth, rowHeight * 4, 'F');
         
         // Amount Received label
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(15);
-        doc.text('Amount', amountX + 5, startY + 10);
-        doc.text('Received', amountX + 5, startY + 25);
+        doc.text('Amount Received', amountX + 5, startY + 10);
         
-        // Amount value - aligned and sized properly
+        // Amount value
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(23);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, amountX + 5, startY + 40);
+        doc.text(amountText, amountX + 5, startY + 30);
         
-        // Received from section - properly aligned with data cells
-        const receivedFromY = startY + (7 * rowHeight);
+        // Received from section
+        const receivedFromY = startY + rowHeight * 7;
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(15);
-        doc.text('Received From', labelX, receivedFromY + 7);
+        doc.text('Received From', labelX, receivedFromY);
         
-        // Received from - name
-        drawDataCell(labelX, receivedFromY + 10, dataWidth, rowHeight, receivedFrom);
+        // Customer name
+        drawDataCell(labelX, receivedFromY + 5, labelColWidth, rowHeight, receivedFrom);
         
-        // Customer address from database
+        // Customer address below name
         if (customerAddress) {
-          drawDataCell(labelX, receivedFromY + 10 + rowHeight, dataWidth, rowHeight, customerAddress, 11);
+          drawDataCell(labelX, receivedFromY + 5 + rowHeight, labelColWidth, rowHeight, customerAddress, 11);
         }
         
-        // Add signature at bottom right
+        // Add signature at bottom right - matching the exact position in example
         if (signatureImg) {
-          const signatureY = receivedFromY + 10;
-          doc.addImage(signatureImg, 'PNG', amountX, signatureY, 55, 25);
+          const signatureY = receivedFromY + 5;
+          doc.addImage(signatureImg, 'PNG', amountX, signatureY, 50, 20);
           
-          // Add signature text
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(12);
           doc.setTextColor(0, 0, 0);
-          doc.text('Authorized Signature', amountX + 5, signatureY + 35);
+          doc.text('Authorized Signature', amountX, signatureY + 35);
         }
         
         // Save the PDF with a filename based on customer and date
