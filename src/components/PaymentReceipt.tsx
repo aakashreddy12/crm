@@ -136,31 +136,37 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           doc.text(text, x + 5, textY);
         };
         
-        // Draw data cells for payment details
-        drawDataCell(dataX, startY, dataColWidth, rowHeight, date);
-        drawDataCell(dataX, startY + rowHeight, dataColWidth, rowHeight, refNumber);
-        drawDataCell(dataX, startY + rowHeight * 2, dataColWidth, rowHeight, paymentMode);
-        drawDataCell(dataX, startY + rowHeight * 3, dataColWidth, rowHeight, `${placeOfSupply} (36)`);
+        // Calculate the right position for the green box
+        const greenBoxWidth = 75;
+        const greenBoxX = dataX + dataColWidth - greenBoxWidth;
+        const greenBoxHeight = rowHeight * 4;
         
-        // Amount in words - spanning two rows
-        const amountInWords = 'Indian Rupee Ten Thousand Only';
-        drawDataCell(dataX, startY + rowHeight * 4, dataColWidth, rowHeight * 2, amountInWords);
-        
-        // Amount box with green background - positioned exactly like the example
+        // Draw the green box first
         doc.setFillColor(140, 198, 63); // Green color
-        doc.rect(amountX, startY, amountBoxWidth, rowHeight * 4, 'F');
+        doc.rect(greenBoxX, startY, greenBoxWidth, greenBoxHeight, 'F');
         
         // Amount Received label
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(15);
-        doc.text('Amount Received', amountX + 5, startY + 10);
+        doc.text('Amount Received', greenBoxX + 5, startY + 10);
         
-        // Amount value
+        // Amount value - positioned to match example
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(23);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, amountX + 5, startY + 30);
+        doc.text(amountText, greenBoxX + 5, startY + 35);
+        
+        // Draw data cells for payment details - adjusted to not overlap with green box
+        const adjustedDataWidth = dataColWidth - greenBoxWidth;
+        drawDataCell(dataX, startY, adjustedDataWidth, rowHeight, date);
+        drawDataCell(dataX, startY + rowHeight, adjustedDataWidth, rowHeight, refNumber);
+        drawDataCell(dataX, startY + rowHeight * 2, adjustedDataWidth, rowHeight, paymentMode);
+        drawDataCell(dataX, startY + rowHeight * 3, adjustedDataWidth, rowHeight, `${placeOfSupply} (36)`);
+        
+        // Amount in words - spanning two rows - positioned below all other rows
+        const amountInWords = 'Indian Rupee Ten Thousand Only';
+        drawDataCell(dataX, startY + rowHeight * 4, dataColWidth, rowHeight * 2, amountInWords);
         
         // Received from section
         const receivedFromY = startY + rowHeight * 7;
@@ -180,12 +186,12 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         // Add signature at bottom right - matching the exact position in example
         if (signatureImg) {
           const signatureY = receivedFromY + 5;
-          doc.addImage(signatureImg, 'PNG', amountX, signatureY, 50, 20);
+          doc.addImage(signatureImg, 'PNG', greenBoxX, signatureY, 50, 20);
           
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(12);
           doc.setTextColor(0, 0, 0);
-          doc.text('Authorized Signature', amountX, signatureY + 35);
+          doc.text('Authorized Signature', greenBoxX, signatureY + 35);
         }
         
         // Save the PDF with a filename based on customer and date
