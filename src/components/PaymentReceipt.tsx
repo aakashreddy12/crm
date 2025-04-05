@@ -137,9 +137,9 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         };
         
         // Calculate the right position for the green box
-        const greenBoxWidth = 75;
+        const greenBoxWidth = 60;
         const greenBoxX = dataX + dataColWidth - greenBoxWidth;
-        const greenBoxHeight = rowHeight * 4;
+        const greenBoxHeight = rowHeight * 3;
         
         // Draw the green box first
         doc.setFillColor(140, 198, 63); // Green color
@@ -153,9 +153,9 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         
         // Amount value - positioned to match example
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(23);
+        doc.setFontSize(21);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, greenBoxX + 5, startY + 35);
+        doc.text(amountText, greenBoxX + 5, startY + 25);
         
         // Draw data cells for payment details - adjusted to not overlap with green box
         const adjustedDataWidth = dataColWidth - greenBoxWidth;
