@@ -258,7 +258,8 @@ const ProjectDetails = () => {
   };
 
   const hasReceiptAccess = () => {
-    return isAdmin;
+    // Allow both admin users and contact@axisogreen.in to download receipts
+    return isAdmin || (user?.email === 'contact@axisogreen.in');
   };
 
   const handleDownloadReceipt = (amount: number, date: string) => {
