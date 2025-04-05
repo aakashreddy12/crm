@@ -61,16 +61,24 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setLineWidth(0.1);
         doc.line(margin, 70, pageWidth - margin, 70);
 
-        // Payment Receipt title
+        // Payment Receipt title with underline
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.text('PAYMENT RECEIPT', pageWidth / 2, 85, { align: 'center' });
+        doc.setFontSize(16);
+        const titleText = 'PAYMENT RECEIPT';
+        const titleX = pageWidth / 2;
+        const titleY = 85;
+        doc.text(titleText, titleX, titleY, { align: 'center' });
+        
+        // Add underline for the title
+        const titleWidth = doc.getTextWidth(titleText);
+        doc.setLineWidth(0.5);
+        doc.line(titleX - titleWidth/2, titleY + 1, titleX + titleWidth/2, titleY + 1);
         
         // Table layout for payment details
         const startY = 100;
-        const lineHeight = 10;
+        const lineHeight = 8; // Reduced line height
         const labelColX = margin;
-        const valueColX = 85;
+        const valueColX = 75; // Reduced gap between label and value
         
         // Payment details - left column labels
         doc.setFont('helvetica', 'normal');
@@ -113,12 +121,12 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         // Amount text in white
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
+        doc.setFontSize(12); // Increased from 10
         doc.text('Amount Received', amountBoxX + 5, amountBoxY + 10);
         
         // Format amount with commas and display in larger font
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
+        doc.setFontSize(18); // Increased from 14
         doc.text(`Rs.${amount.toLocaleString()}.00`, amountBoxX + 5, amountBoxY + 25);
         
         // Reset text color to black for rest of document
