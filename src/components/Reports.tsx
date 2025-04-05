@@ -15,6 +15,7 @@ import {
   AlertDescription,
   Select,
   Flex,
+  VStack,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -46,7 +47,6 @@ const Reports = () => {
 
   useEffect(() => {
     fetchStats();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]); // Refetch when year changes
 
   const fetchStats = async () => {
@@ -177,32 +177,46 @@ const Reports = () => {
           </Select>
         </Flex>
         
-        {Object.entries(monthlyStats).map(([month, count]) => (
-          <HStack key={month} mb="3">
-            <Text minW="100px">{month}</Text>
-            <Box width="100%" position="relative">
-              <ChakraProgress 
-                value={(count / maxMonthlyCount) * 100}
-                size="md"
-                colorScheme="green" 
-                borderRadius="md"
-              />
+        <Flex height="250px" alignItems="flex-end" mb="2">
+          {Object.entries(monthlyStats).map(([month, count]) => (
+            <VStack key={month} flex="1" spacing="0">
               <Box 
-                position="absolute" 
-                top="50%" 
-                left={`${Math.max((count / maxMonthlyCount) * 100 - 5, 1)}%`}
-                transform="translateY(-50%)"
-                color={count > 0 ? "white" : "black"}
-                fontSize="xs"
-                fontWeight="bold"
-                pl={1}
+                height={`${Math.max((count / maxMonthlyCount) * 200, count ? 20 : 0)}px`}
+                width="70%" 
+                bg="green.500"
+                borderTopRadius="md"
+                position="relative"
               >
-                {count > 0 && count}
+                {count > 0 && (
+                  <Text 
+                    position="absolute"
+                    top="-20px"
+                    left="50%"
+                    transform="translateX(-50%)"
+                    color="black"
+                    fontWeight="bold"
+                    fontSize="sm"
+                  >
+                    {count}
+                  </Text>
+                )}
               </Box>
-            </Box>
-            <Text minW="80px" textAlign="right">{count} projects</Text>
-          </HStack>
-        ))}
+              <Text 
+                fontSize="xs" 
+                fontWeight="medium" 
+                pt="2"
+                transform="rotate(-45deg)" 
+                transformOrigin="top left"
+                width="100%"
+                textAlign="center"
+                height="60px"
+                overflow="visible"
+              >
+                {month.substring(0, 3)}
+              </Text>
+            </VStack>
+          ))}
+        </Flex>
       </Box>
 
       <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
