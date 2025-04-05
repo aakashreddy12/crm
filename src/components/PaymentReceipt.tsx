@@ -118,16 +118,26 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFillColor(128, 187, 95); // Green color for background
         doc.rect(amountBoxX, amountBoxY, amountBoxWidth, amountBoxHeight, 'F');
         
-        // Amount text in white
+        // Amount text in white - centered in box
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12); // Increased from 10
-        doc.text('Amount Received', amountBoxX + 5, amountBoxY + 10);
+        doc.setFontSize(14); // Increased from 12
         
-        // Format amount with commas and display in larger font
+        // Center align "Amount Received" text
+        const labelText = 'Amount Received';
+        const labelWidth = doc.getTextWidth(labelText);
+        const labelX = amountBoxX + (amountBoxWidth - labelWidth) / 2;
+        doc.text(labelText, labelX, amountBoxY + 10);
+        
+        // Format amount with commas and display in larger font - centered
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18); // Increased from 14
-        doc.text(`Rs.${amount.toLocaleString()}.00`, amountBoxX + 5, amountBoxY + 25);
+        doc.setFontSize(20); // Increased from 18
+        
+        // Center align amount value
+        const amountText = `Rs.${amount.toLocaleString()}.00`;
+        const amountWidth = doc.getTextWidth(amountText);
+        const amountX = amountBoxX + (amountBoxWidth - amountWidth) / 2;
+        doc.text(amountText, amountX, amountBoxY + 25);
         
         // Reset text color to black for rest of document
         doc.setTextColor(0);
