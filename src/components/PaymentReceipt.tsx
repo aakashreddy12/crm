@@ -45,12 +45,12 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         
         // Company details on the left
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
+        doc.setFontSize(15);
         doc.text('Axiso Green Energies Private Limited', margin, 25);
         
         // Company details in lighter text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(12);
         doc.text('Telangana', margin, 32);
         doc.text('India', margin, 39);
         doc.text('GSTIN 36ABCA4478M1Z9', margin, 46);
@@ -68,7 +68,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
 
         // Payment Receipt title
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
+        doc.setFontSize(21);
         const titleText = 'PAYMENT RECEIPT';
         doc.text(titleText, pageCenter, 85, { align: 'center' });
         
@@ -95,7 +95,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         
         // Draw table labels
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(15);
         doc.setTextColor(0, 0, 0);
         
         // Label column
@@ -121,13 +121,22 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           
           if (isGreen) {
             doc.setTextColor(255, 255, 255); // White text for green background
+            
+            // Amount Received label
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(15);
+            doc.text('Amount Received', x + 5, y + 6);
+            
+            // Amount value
             doc.setFont('helvetica', 'bold');
+            doc.setFontSize(23);
+            doc.text(`Rs.${amount.toLocaleString()}`, x + 5, y + 15);
           } else {
             doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'normal');
+            doc.setFont('helvetica', 'bold'); // Make all data bold
+            doc.setFontSize(15);
+            doc.text(text, x + 5, y + 10);
           }
-          
-          doc.text(text, x + 5, y + 10);
         };
         
         // Calculate positions
@@ -143,8 +152,20 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         // Amount in words (spanning two rows)
         drawCell(valueColX, startY + rowHeight * 4, valueColWidth, rowHeight * 2, 'Indian Rupee Ten Thousand Only');
         
-        // Amount cell with green background
-        drawCell(amountColX, startY, amountColWidth, rowHeight, `Rs.${amount.toLocaleString()}`, true);
+        // Amount cell with green background (making it taller for two lines of text)
+        doc.setFillColor(140, 198, 63); // Green for amount
+        doc.rect(amountColX, startY, amountColWidth, rowHeight * 1.5, 'F');
+        
+        // Amount Received label
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(15);
+        doc.text('Amount Received', amountColX + 5, startY + 8);
+        
+        // Amount value
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(23);
+        doc.text(`Rs.${amount.toLocaleString()}`, amountColX + 5, startY + 23);
         
         // Received from cell
         drawCell(margin, startY + rowHeight * 7 + 10, labelColWidth, rowHeight, receivedFrom);
@@ -155,7 +176,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           
           // Add signature text
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(12);
           doc.setTextColor(0, 0, 0);
           doc.text('Authorized Signature', amountColX, startY + rowHeight * 7 + 35);
         }
