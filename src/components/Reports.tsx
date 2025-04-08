@@ -26,6 +26,7 @@ interface Project {
   current_stage: string;
   proposal_amount: number;
   created_at: string;
+  start_date: string;
   kwh: number;
 }
 
@@ -99,9 +100,10 @@ const Reports = () => {
         const monthNames = Object.keys(monthlyKWHData);
         
         projects.forEach((project: Project) => {
-          const createdDate = new Date(project.created_at);
-          const projectYear = createdDate.getFullYear();
-          const projectMonth = createdDate.getMonth(); // 0-11
+          const dateToUse = project.start_date || project.created_at;
+          const projectDate = new Date(dateToUse);
+          const projectYear = projectDate.getFullYear();
+          const projectMonth = projectDate.getMonth(); // 0-11
           
           if (projectYear === selectedYear && project.kwh) {
             monthlyKWHData[monthNames[projectMonth]] += project.kwh;
@@ -172,7 +174,7 @@ const Reports = () => {
 
       <Box bg="white" p="6" borderRadius="lg" boxShadow="sm" mb="8">
         <Flex justify="space-between" align="center" mb="4">
-          <Text fontSize="lg" fontWeight="bold">KWH Usage by Month</Text>
+          <Text fontSize="lg" fontWeight="bold">KWH Usage by Month (Based on Project Start Date)</Text>
           <Select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
