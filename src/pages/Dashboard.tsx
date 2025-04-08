@@ -21,6 +21,7 @@ import {
   Th,
   Td,
   Badge,
+  Tooltip,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -33,9 +34,41 @@ interface Project {
   current_stage: string;
   proposal_amount: number;
   created_at: string;
+  start_date: string;
   kwh: number;
 }
 
+// Utility function to calculate elapsed time since start date - same as in Projects.tsx
+const calculateElapsedTime = (startDateStr: string | null) => {
+  if (!startDateStr) return 'N/A';
+  
+  const startDate = new Date(startDateStr);
+  const currentDate = new Date();
+  
+  // Check for invalid date
+  if (isNaN(startDate.getTime())) return 'N/A';
+  
+  const diffTime = Math.abs(currentDate.getTime() - startDate.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 1) return 'Today';
+  if (diffDays === 1) return '1 day';
+  if (diffDays < 7) return `${diffDays} days`;
+  
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks === 1) return '1 week';
+  if (diffWeeks < 4) return `${diffWeeks} weeks`;
+  
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths === 1) return '1 month';
+  if (diffMonths < 12) return `${diffMonths} months`;
+  
+  const diffYears = Math.floor(diffDays / 365);
+  if (diffYears === 1) return '1 year';
+  return `${diffYears} years`;
+};
+
+// For backward compatibility - keeping this function for any existing code that might use it
 const getTimeElapsed = (timestamp: string) => {
   const now = new Date();
   const projectDate = new Date(timestamp);
@@ -163,7 +196,7 @@ const Dashboard = () => {
                   <Th>Current Stage</Th>
                   <Th>Amount</Th>
                   <Th>KWH</Th>
-                  <Th>Started</Th>
+                  <Th>Duration</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -176,7 +209,11 @@ const Dashboard = () => {
                     </Td>
                     <Td>₹{project.proposal_amount.toLocaleString()}</Td>
                     <Td>{project.kwh || 'N/A'}</Td>
-                    <Td>{getTimeElapsed(project.created_at)}</Td>
+                    <Td>
+                      <Tooltip label={project.start_date ? `Project started on ${new Date(project.start_date).toLocaleDateString()}` : 'Using creation date'}>
+                        <Text>{calculateElapsedTime(project.start_date || project.created_at)}</Text>
+                      </Tooltip>
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>

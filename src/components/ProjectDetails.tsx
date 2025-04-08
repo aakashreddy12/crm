@@ -558,7 +558,7 @@ const ProjectDetails = () => {
 
   // Check if user has edit access
   const hasEditAccess = () => {
-    return isAdmin;
+    return isAdmin || user?.email === 'contact@axisogreen.in';
   };
 
   return (
