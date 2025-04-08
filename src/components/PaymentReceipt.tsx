@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 
 interface PaymentReceiptProps {
@@ -19,6 +19,54 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
     placeOfSupply,
     customerAddress
   } = props;
+
+  // Helper function to convert number to words - wrapped in useCallback
+  const convertToWords = useCallback((num: number): string => {
+    const single = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const double = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const formatTens = (num: number): string => {
+      if (num < 10) return single[num];
+      if (num < 20) return double[num - 10];
+      return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + single[num % 10] : '');
+    };
+    
+    if (num === 0) return 'Zero';
+    
+    // Handle rupees conversion
+    let words = '';
+    
+    // Handle crores
+    if (num >= 10000000) {
+      words += convertToWords(Math.floor(num / 10000000)) + ' Crore ';
+      num %= 10000000;
+    }
+    
+    // Handle lakhs
+    if (num >= 100000) {
+      words += convertToWords(Math.floor(num / 100000)) + ' Lakh ';
+      num %= 100000;
+    }
+    
+    // Handle thousands
+    if (num >= 1000) {
+      words += convertToWords(Math.floor(num / 1000)) + ' Thousand ';
+      num %= 1000;
+    }
+    
+    // Handle hundreds
+    if (num >= 100) {
+      words += convertToWords(Math.floor(num / 100)) + ' Hundred ';
+      num %= 100;
+    }
+    
+    // Handle tens and units
+    if (num > 0) {
+      words += formatTens(num);
+    }
+    
+    return words.trim();
+  }, []);
 
   useEffect(() => {
     const generatePDF = async () => {
@@ -96,9 +144,9 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         const labelX = margin;
         const dataX = margin + labelColWidth;
         
-        // Green box dimensions - smaller as requested
+        // Green box dimensions - adjusted to match example image
         const greenBoxWidth = 55;
-        const greenBoxHeight = rowHeight * 3; // Height for green box
+        const greenBoxHeight = rowHeight * 2.5; // Reduced height slightly
         const greenBoxX = dataX + dataColWidth - greenBoxWidth;
         
         // Reference ID
@@ -149,11 +197,11 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFontSize(12);
         doc.text('Amount Received', greenBoxX + 5, startY + 10);
         
-        // Amount value inside green box
+        // Amount value inside green box - moved higher up
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, greenBoxX + 5, startY + 30);
+        doc.text(amountText, greenBoxX + 5, startY + 22); // Moved up from 30 to 22
         
         // Draw data cells for payment details - adjusted to not overlap with green box
         const adjustedDataWidth = dataColWidth - greenBoxWidth;
@@ -165,7 +213,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         drawDataCell(dataX, startY + rowHeight * 3, dataColWidth, rowHeight, `${placeOfSupply} (36)`);
         
         // Amount in words - spanning two rows
-        const amountInWords = 'Indian Rupee Ten Thousand Only';
+        const amountInWords = `Indian Rupee ${convertToWords(amount)} Only`;
         drawDataCell(dataX, startY + rowHeight * 4, dataColWidth, rowHeight * 2, amountInWords);
         
         // Received from section
@@ -243,7 +291,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
     };
 
     generatePDF();
-  }, [date, amount, receivedFrom, paymentMode, placeOfSupply, customerAddress]);
+  }, [date, amount, receivedFrom, paymentMode, placeOfSupply, customerAddress, convertToWords]);
 
   // The component doesn't render anything visible
   return null;
