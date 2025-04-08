@@ -16,6 +16,9 @@ import {
   Select,
   Flex,
   VStack,
+  Tooltip,
+  Badge,
+  Heading,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -30,6 +33,24 @@ interface Project {
   start_date: string;
   kwh: number;
 }
+
+// Group stages for better visualization
+const STAGE_GROUPS = [
+  { name: 'Initial Phase', stages: ['Advance payment done', 'Approvals to be received', 'Approvals Received/shared to customer'] },
+  { name: 'Procurement', stages: ['First payment collected/loan process started', 'Loan Approved', 'Structure ordered/panels ordered', 'Structure arrived/panels arrived', '2nd payment collected'] },
+  { name: 'Installation', stages: ['Installation pending', 'Installation Done'] },
+  { name: 'Net Metering', stages: ['Net meter Application(yet to start)', 'Net meter Application(If applicable)', 'Net Meter Received', 'Net Meter Installation completed'] },
+  { name: 'Completion', stages: ['Inspection pending', 'Approved Inspection', 'Subsisdy(in progress)', 'Subsidy disbursed', 'Handover of Docs', 'Final payment(done)/completed'] }
+];
+
+// Define colors for different stage groups
+const GROUP_COLORS = {
+  'Initial Phase': 'blue',
+  'Procurement': 'purple',
+  'Installation': 'orange',
+  'Net Metering': 'teal',
+  'Completion': 'green'
+};
 
 const Reports = () => {
   const { user } = useAuth();
@@ -127,6 +148,9 @@ const Reports = () => {
 
   // Calculate the maximum KWH for any month to set the bar scale
   const maxMonthlyKWH = monthlyKWH ? Math.max(...Object.values(monthlyKWH), 1) : 1;
+
+  // Calculate maximum projects in any stage for scaling
+  const maxProjectsInStage = Math.max(...Object.values(stageStats), 1);
 
   if (isLoading) {
     return (
@@ -240,18 +264,57 @@ const Reports = () => {
       </Box>
 
       <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
-        <Text fontSize="lg" fontWeight="bold" mb="4">Project Stages</Text>
-        {PROJECT_STAGES.map(stage => (
-          <HStack key={stage} mb="3">
-            <Text minW="200px">{stage}</Text>
-            <ChakraProgress
-              value={100}
-              flex="1"
-              colorScheme="blue"
-              opacity={stageStats[stage] ? 1 : 0.3}
-            />
-            <Text minW="100px">{stageStats[stage] || 0} projects</Text>
-          </HStack>
+        <Text fontSize="xl" fontWeight="bold" mb="6">Project Stages Distribution</Text>
+        
+        {STAGE_GROUPS.map((group, index) => (
+          <Box key={group.name} mb={6}>
+            <Flex align="center" mb={3}>
+              <Badge colorScheme={GROUP_COLORS[group.name as keyof typeof GROUP_COLORS]} px={2} py={1} borderRadius="md">
+                {group.name}
+              </Badge>
+              <Text ml={2} fontSize="md" fontWeight="medium">
+                {group.stages.reduce((count, stage) => count + (stageStats[stage] || 0), 0)} projects
+              </Text>
+            </Flex>
+            
+            {group.stages.map(stage => {
+              const count = stageStats[stage] || 0;
+              const percentage = Math.round((count / maxProjectsInStage) * 100);
+              
+              return (
+                <Tooltip 
+                  key={stage} 
+                  label={`${count} project${count !== 1 ? 's' : ''} in "${stage}" stage`} 
+                  hasArrow
+                >
+                  <HStack mb={3} spacing={3}>
+                    <Text minW="250px" fontSize="sm" color="gray.600">{stage}</Text>
+                    <Box position="relative" width="full" height="20px">
+                      <ChakraProgress
+                        value={count > 0 ? Math.max(percentage, 5) : 0}
+                        height="16px"
+                        borderRadius="full"
+                        colorScheme={GROUP_COLORS[group.name as keyof typeof GROUP_COLORS]}
+                        bgColor="gray.100"
+                      />
+                      <Text 
+                        position="absolute" 
+                        right="8px" 
+                        top="50%" 
+                        transform="translateY(-50%)" 
+                        fontSize="xs" 
+                        fontWeight="bold"
+                        color={count > 0 ? "white" : "gray.500"}
+                        zIndex={2}
+                      >
+                        {count}
+                      </Text>
+                    </Box>
+                  </HStack>
+                </Tooltip>
+              );
+            })}
+          </Box>
         ))}
       </Box>
     </Box>
