@@ -473,7 +473,7 @@ const ProjectDetails = () => {
               <Tbody>
                 {project.advance_payment > 0 && (
                   <Tr>
-                    <Td>{new Date(project.created_at).toLocaleDateString()}</Td>
+                    <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : new Date(project.created_at).toLocaleDateString()}</Td>
                     <Td>Advance Payment</Td>
                     <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
                     <Td>{project.start_date ? getTimeElapsed(project.start_date) : getTimeElapsed(project.created_at)}</Td>
@@ -482,7 +482,7 @@ const ProjectDetails = () => {
                         <Button
                           size="sm"
                           colorScheme="blue"
-                          onClick={() => handleDownloadReceipt(project.advance_payment, project.created_at)}
+                          onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date || project.created_at)}
                           isDisabled={loading}
                         >
                           Download Receipt
