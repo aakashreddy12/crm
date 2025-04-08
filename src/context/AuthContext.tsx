@@ -66,15 +66,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { error: insertError } = await supabase
             .from('users')
             .insert({
-              id: session.user.id,
+              id: session.user.id,  // Explicitly include the ID
               email: session.user.email,
               role: role // Set appropriate role
             });
 
           if (insertError) {
             console.error('Error creating user:', insertError);
-            setIsAdmin(false);
+            // Continue with authentication but log the error
           }
+          
+          // We know this is not an admin user since we're creating it as 'finance' or 'user'
+          setIsAdmin(false);
         } else {
           console.error('Error fetching user role:', userError);
           setIsAdmin(false);
@@ -161,9 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           const { error: insertError } = await supabase
             .from('users')
-            .insert([{ email, role }]);
+            .insert([{ 
+              id: data.user.id,  // Explicitly set the id from auth
+              email, 
+              role 
+            }]);
 
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error('Error creating user record:', insertError);
+            // Continue with login even if user record creation fails
+          } else {
+            console.log('Created new user record successfully');
+          }
+          
+          // We know this is not an admin user since we're creating it as 'finance' or 'user'
           setIsAdmin(false);
         } else {
           setIsAdmin(userData.role === 'admin');
