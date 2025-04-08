@@ -98,7 +98,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         
         // Green box dimensions - smaller as requested
         const greenBoxWidth = 55;
-        const greenBoxHeight = rowHeight * 2; // Reduced height
+        const greenBoxHeight = rowHeight * 3; // Increased to fit amount text
         const greenBoxX = dataX + dataColWidth - greenBoxWidth;
         
         // Reference ID
@@ -143,18 +143,18 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFillColor(140, 198, 63); // Green color
         doc.rect(greenBoxX, startY, greenBoxWidth, greenBoxHeight, 'F');
         
-        // Amount Received label
+        // Amount Received label inside green box
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(14);
         doc.text('Amount', greenBoxX + 5, startY + 10);
         doc.text('Received', greenBoxX + 5, startY + 22);
         
-        // Amount value - positioned to match example
+        // Amount value inside green box
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, greenBoxX + 5, startY + greenBoxHeight + 12);
+        doc.text(amountText, greenBoxX + 5, startY + 38);
         
         // Draw data cells for payment details - adjusted to not overlap with green box
         const adjustedDataWidth = dataColWidth - greenBoxWidth;
@@ -176,13 +176,51 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFontSize(15);
         doc.text('Received From', labelX, receivedFromY);
         
+        // Format address to multiple lines if needed
+        const formatAddressToLines = (address: string, maxLength: number = 40): string[] => {
+          if (!address) return [];
+          
+          const words = address.split(' ');
+          const lines: string[] = [];
+          let currentLine = words[0];
+          
+          for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            if ((currentLine + ' ' + word).length <= maxLength) {
+              currentLine += ' ' + word;
+            } else {
+              lines.push(currentLine);
+              currentLine = word;
+            }
+          }
+          
+          if (currentLine) lines.push(currentLine);
+          return lines;
+        };
+        
         // Customer name with blue background
         const fullWidth = dataColWidth + labelColWidth;
         drawDataCell(labelX, receivedFromY + 5, fullWidth, rowHeight, receivedFrom);
         
-        // Customer address with same blue background
+        // Customer address with same blue background, possibly multiple rows
         if (customerAddress) {
-          drawDataCell(labelX, receivedFromY + 5 + rowHeight, fullWidth, rowHeight, customerAddress, 11);
+          const addressLines = formatAddressToLines(customerAddress);
+          const addressFontSize = 11;
+          
+          // Create a background for all address lines
+          doc.setFillColor(bgColorR, bgColorG, bgColorB);
+          const addressHeight = rowHeight * addressLines.length;
+          doc.rect(labelX, receivedFromY + 5 + rowHeight, fullWidth, addressHeight, 'F');
+          
+          // Draw each line of the address
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(addressFontSize);
+          doc.setTextColor(0, 0, 0);
+          
+          addressLines.forEach((line, index) => {
+            const y = receivedFromY + 5 + rowHeight + (rowHeight / 2) + (index * rowHeight) + (addressFontSize / 6);
+            doc.text(line, labelX + 5, y);
+          });
         }
         
         // Add signature at bottom right
