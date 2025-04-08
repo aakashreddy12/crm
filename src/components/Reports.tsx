@@ -173,7 +173,7 @@ const Reports = () => {
       </Grid>
 
       <Box bg="white" p="6" borderRadius="lg" boxShadow="sm" mb="8">
-        <Flex justify="space-between" align="center" mb="4">
+        <Flex justify="space-between" align="center" mb="6">
           <Text fontSize="lg" fontWeight="bold">KWH Usage by Month (Based on Project Start Date)</Text>
           <Select 
             value={selectedYear} 
@@ -188,11 +188,11 @@ const Reports = () => {
           </Select>
         </Flex>
         
-        <Flex height="250px" alignItems="flex-end" mb="2">
+        <Flex height="250px" alignItems="flex-end" mb="2" mt="30px">
           {Object.entries(monthlyKWH).map(([month, kwh]) => (
             <VStack key={month} flex="1" spacing="0">
               <Box 
-                height={`${Math.max((kwh / maxMonthlyKWH) * 200, kwh ? 20 : 0)}px`}
+                height={`${Math.max((kwh / maxMonthlyKWH) * 180, kwh ? 20 : 0)}px`}
                 width="70%" 
                 bg="green.500"
                 borderTopRadius="md"
