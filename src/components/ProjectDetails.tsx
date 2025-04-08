@@ -32,12 +32,15 @@ import {
   Tbody,
   Td,
   ModalCloseButton,
+  Tooltip,
+  IconButton,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { PROJECT_STAGES } from '../lib/constants';
 import PaymentReceipt from './PaymentReceipt';
 import { createRoot } from 'react-dom/client';
 import { useAuth } from '../context/AuthContext';
+import { EditIcon } from '@chakra-ui/icons';
 
 interface PaymentHistory {
   id: string;
@@ -94,6 +97,20 @@ const ProjectDetails = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  // Customer edit modal state
+  const { 
+    isOpen: isEditOpen, 
+    onOpen: onEditOpen, 
+    onClose: onEditClose 
+  } = useDisclosure();
+  const [customerFormData, setCustomerFormData] = useState({
+    customer_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    kwh: 0
+  });
+
   // Add useEffect for timestamp updates
   useEffect(() => {
     const interval = setInterval(() => {
@@ -147,6 +164,19 @@ const ProjectDetails = () => {
 
     fetchProjectAndPayments();
   }, [fetchProjectAndPayments, isAuthenticated, navigate]);
+
+  // Initialize customer form data when project is loaded
+  useEffect(() => {
+    if (project) {
+      setCustomerFormData({
+        customer_name: project.customer_name || '',
+        email: project.email || '',
+        phone: project.phone || '',
+        address: project.address || '',
+        kwh: project.kwh || 0
+      });
+    }
+  }, [project]);
 
   if (!isAuthenticated) {
     return null;
@@ -465,6 +495,72 @@ const ProjectDetails = () => {
     return isAdmin && user?.email !== 'contact@axisogreen.in';
   };
 
+  // Handle form input changes
+  const handleCustomerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCustomerFormData(prev => ({
+      ...prev,
+      [name]: name === 'kwh' ? parseFloat(value) || 0 : value
+    }));
+  };
+
+  // Handle customer details update
+  const handleCustomerUpdate = async () => {
+    if (!project || !id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update({
+          customer_name: customerFormData.customer_name,
+          email: customerFormData.email,
+          phone: customerFormData.phone,
+          address: customerFormData.address,
+          kwh: customerFormData.kwh
+        })
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+      
+      // Update project data
+      if (data && data[0]) {
+        setProject({
+          ...project,
+          customer_name: customerFormData.customer_name,
+          email: customerFormData.email,
+          phone: customerFormData.phone,
+          address: customerFormData.address,
+          kwh: customerFormData.kwh
+        });
+      }
+
+      toast({
+        title: 'Customer Updated',
+        description: 'Customer details have been updated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      onEditClose();
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update customer details',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Check if user has edit access
+  const hasEditAccess = () => {
+    return isAdmin;
+  };
+
   return (
     <Box p={6} maxW="1200px" mx="auto">
       <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
@@ -499,7 +595,20 @@ const ProjectDetails = () => {
 
         <Card>
           <CardHeader>
-            <Text fontSize="2xl" fontWeight="bold">Customer Details</Text>
+            <HStack justify="space-between">
+              <Text fontSize="2xl" fontWeight="bold">Customer Details</Text>
+              {hasEditAccess() && (
+                <Tooltip label="Edit Customer Details">
+                  <IconButton
+                    aria-label="Edit customer details"
+                    icon={<EditIcon />}
+                    size="sm"
+                    colorScheme="blue"
+                    onClick={onEditOpen}
+                  />
+                </Tooltip>
+              )}
+            </HStack>
           </CardHeader>
           <CardBody>
             <VStack align="start" spacing={4} width="full">
@@ -531,6 +640,73 @@ const ProjectDetails = () => {
           </CardBody>
         </Card>
       </SimpleGrid>
+
+      {/* Customer Edit Modal */}
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Edit Customer Details</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel>Customer Name</FormLabel>
+                <Input 
+                  name="customer_name"
+                  value={customerFormData.customer_name}
+                  onChange={handleCustomerFormChange}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Email</FormLabel>
+                <Input 
+                  name="email"
+                  type="email"
+                  value={customerFormData.email}
+                  onChange={handleCustomerFormChange}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Phone</FormLabel>
+                <Input 
+                  name="phone"
+                  value={customerFormData.phone}
+                  onChange={handleCustomerFormChange}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Address</FormLabel>
+                <Input 
+                  name="address"
+                  value={customerFormData.address}
+                  onChange={handleCustomerFormChange}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>KWH</FormLabel>
+                <Input 
+                  name="kwh"
+                  type="number"
+                  value={customerFormData.kwh || ''}
+                  onChange={handleCustomerFormChange}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onEditClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="blue" onClick={handleCustomerUpdate}>
+              Save Changes
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <Card mt={8}>
         <CardHeader>
