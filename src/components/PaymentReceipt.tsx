@@ -115,11 +115,21 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setLineWidth(0.5);
         doc.line(margin, 70, pageWidth - margin, 70);
 
-        // Payment Receipt title - centered
+        // Payment Receipt title - centered and underlined
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(21);
         const titleText = 'PAYMENT RECEIPT';
         doc.text(titleText, pageWidth / 2, 85, { align: 'center' });
+        
+        // Add underline for the title
+        const titleWidth = doc.getTextWidth(titleText);
+        doc.setLineWidth(0.8);
+        doc.line(
+          pageWidth / 2 - titleWidth / 2,
+          87,
+          pageWidth / 2 + titleWidth / 2,
+          87
+        );
         
         // Background color for data cells - #97afc2 with 29% opacity
         const r = 151, g = 175, b = 194; // #97afc2 in RGB
@@ -258,7 +268,9 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           
           // Create a background for all address lines
           doc.setFillColor(bgColorR, bgColorG, bgColorB);
-          const addressHeight = rowHeight * addressLines.length;
+          // Reduce line height for address to 10mm (was 15mm)
+          const addressLineHeight = 10;
+          const addressHeight = addressLineHeight * addressLines.length;
           doc.rect(labelX, receivedFromY + 5 + rowHeight, fullWidth, addressHeight, 'F');
           
           // Draw each line of the address
@@ -267,14 +279,18 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           doc.setTextColor(0, 0, 0);
           
           addressLines.forEach((line, index) => {
-            const y = receivedFromY + 5 + rowHeight + (rowHeight / 2) + (index * rowHeight) + (addressFontSize / 6);
+            // Adjust positioning with reduced spacing
+            const y = receivedFromY + 5 + rowHeight + (addressLineHeight / 2) + (index * addressLineHeight) + (addressFontSize / 6);
             doc.text(line, labelX + 5, y);
           });
         }
         
         // Add signature at appropriate position with clear space between address area
         if (signatureImg) {
-          const signatureY = receivedFromY + 5 + (customerAddress ? formatAddressToLines(customerAddress).length * rowHeight + 20 : rowHeight + 20);
+          const addressLines = customerAddress ? formatAddressToLines(customerAddress) : [];
+          // Adjust signature position based on reduced address line height
+          const addressLineHeight = 10;
+          const signatureY = receivedFromY + 5 + rowHeight + (addressLines.length * addressLineHeight) + 20;
           doc.addImage(signatureImg, 'PNG', greenBoxX, signatureY, 50, 20);
           
           doc.setFont('helvetica', 'normal');
