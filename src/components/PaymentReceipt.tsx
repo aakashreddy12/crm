@@ -121,14 +121,15 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         const titleText = 'PAYMENT RECEIPT';
         doc.text(titleText, pageWidth / 2, 85, { align: 'center' });
         
-        // Add underline for the title
+        // Add underline for the title - fixed to ensure visibility
         const titleWidth = doc.getTextWidth(titleText);
-        doc.setLineWidth(0.8);
+        doc.setDrawColor(0, 0, 0); // Ensure black color for the line
+        doc.setLineWidth(1); // Make line thicker for better visibility
         doc.line(
           pageWidth / 2 - titleWidth / 2,
-          87,
+          88, // Positioned slightly lower for better spacing
           pageWidth / 2 + titleWidth / 2,
-          87
+          88
         );
         
         // Background color for data cells - #97afc2 with 29% opacity
