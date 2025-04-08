@@ -55,7 +55,7 @@ const getTimeElapsed = (timestamp: string) => {
 };
 
 const Dashboard = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [stats, setStats] = useState({
     totalCustomers: 0,
     activeProjects: 0,
@@ -65,6 +65,9 @@ const Dashboard = () => {
   });
   const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Check if current user is contact@axisogreen.in
+  const isRestrictedUser = user?.email === 'contact@axisogreen.in';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -122,7 +125,7 @@ const Dashboard = () => {
   return (
     <Box p={6}>
       <VStack spacing={8} align="stretch">
-        <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(5, 1fr)' }} gap={6}>
+        <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: `repeat(${isRestrictedUser ? 4 : 5}, 1fr)` }} gap={6}>
           <Stat>
             <StatLabel>Total Customers</StatLabel>
             <StatNumber>{stats.totalCustomers}</StatNumber>
@@ -135,10 +138,12 @@ const Dashboard = () => {
             <StatLabel>Completed Projects</StatLabel>
             <StatNumber>{stats.completedProjects}</StatNumber>
           </Stat>
-          <Stat>
-            <StatLabel>Total Revenue</StatLabel>
-            <StatNumber>₹{stats.totalRevenue.toLocaleString()}</StatNumber>
-          </Stat>
+          {!isRestrictedUser && (
+            <Stat>
+              <StatLabel>Total Revenue</StatLabel>
+              <StatNumber>₹{stats.totalRevenue.toLocaleString()}</StatNumber>
+            </Stat>
+          )}
           <Stat>
             <StatLabel>Total KWH</StatLabel>
             <StatNumber>{stats.totalKwh.toLocaleString()} kW</StatNumber>

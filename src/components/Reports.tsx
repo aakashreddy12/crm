@@ -19,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { PROJECT_STAGES } from '../lib/constants';
+import { useAuth } from '../context/AuthContext';
 
 interface Project {
   id: string;
@@ -31,6 +32,7 @@ interface Project {
 }
 
 const Reports = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalCustomers: 0,
     activeProjects: 0,
@@ -47,6 +49,9 @@ const Reports = () => {
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+
+  // Check if current user is contact@axisogreen.in
+  const isRestrictedUser = user?.email === 'contact@axisogreen.in';
 
   useEffect(() => {
     fetchStats();
@@ -145,7 +150,7 @@ const Reports = () => {
     <Box>
       <Text fontSize="2xl" mb="6">Reports & Analytics</Text>
 
-      <Grid templateColumns="repeat(5, 1fr)" gap={6} mb="8">
+      <Grid templateColumns={`repeat(${isRestrictedUser ? 4 : 5}, 1fr)`} gap={6} mb="8">
         <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
           <StatLabel>Total Customers</StatLabel>
           <StatNumber>{stats.totalCustomers}</StatNumber>
@@ -161,10 +166,12 @@ const Reports = () => {
           <StatNumber>{stats.completedProjects}</StatNumber>
         </ChakraStat>
 
-        <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
-          <StatLabel>Total Revenue</StatLabel>
-          <StatNumber>₹{stats.totalRevenue.toLocaleString()}</StatNumber>
-        </ChakraStat>
+        {!isRestrictedUser && (
+          <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
+            <StatLabel>Total Revenue</StatLabel>
+            <StatNumber>₹{stats.totalRevenue.toLocaleString()}</StatNumber>
+          </ChakraStat>
+        )}
 
         <ChakraStat bg="white" p="4" borderRadius="lg" boxShadow="sm">
           <StatLabel>Total KWH</StatLabel>
