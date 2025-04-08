@@ -64,6 +64,7 @@ interface Project {
   project_type: 'DCR' | 'Non DCR';
   payment_mode: 'Loan' | 'Cash';
   created_at: string;
+  start_date: string;
   payment_history: PaymentHistory[];
   kwh: number;
 }
@@ -475,7 +476,7 @@ const ProjectDetails = () => {
                     <Td>{new Date(project.created_at).toLocaleDateString()}</Td>
                     <Td>Advance Payment</Td>
                     <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
-                    <Td>{getTimeElapsed(project.created_at)}</Td>
+                    <Td>{project.start_date ? getTimeElapsed(project.start_date) : getTimeElapsed(project.created_at)}</Td>
                     <Td>
                       {hasReceiptAccess() && (
                         <Button
