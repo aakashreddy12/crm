@@ -97,6 +97,11 @@ const ProjectDetails = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  // Add separate loading state for different operations
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [stageLoading, setStageLoading] = useState(false);
+
   // Customer edit modal state
   const { 
     isOpen: isEditOpen, 
@@ -165,8 +170,21 @@ const ProjectDetails = () => {
     fetchProjectAndPayments();
   }, [fetchProjectAndPayments, isAuthenticated, navigate]);
 
-  // Initialize customer form data when project is loaded
+  // Initialize customer form data when project is loaded (only once)
   useEffect(() => {
+    if (project && !isEditOpen) {
+      setCustomerFormData({
+        customer_name: project.customer_name || '',
+        email: project.email || '',
+        phone: project.phone || '',
+        address: project.address || '',
+        kwh: project.kwh || 0
+      });
+    }
+  }, [project, isEditOpen]);
+
+  // Reset form data when opening the modal
+  const handleEditOpen = () => {
     if (project) {
       setCustomerFormData({
         customer_name: project.customer_name || '',
@@ -176,7 +194,17 @@ const ProjectDetails = () => {
         kwh: project.kwh || 0
       });
     }
-  }, [project]);
+    onEditOpen();
+  };
+
+  // Handle form input changes
+  const handleCustomerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCustomerFormData(prev => ({
+      ...prev,
+      [name]: name === 'kwh' ? (value === '' ? 0 : parseFloat(value) || 0) : value
+    }));
+  };
 
   if (!isAuthenticated) {
     return null;
@@ -318,7 +346,7 @@ const ProjectDetails = () => {
 
   const handlePayment = async () => {
     try {
-      setLoading(true);
+      setPaymentLoading(true);
       const amount = parseFloat(paymentAmount);
       
       if (amount <= 0) {
@@ -379,29 +407,30 @@ const ProjectDetails = () => {
         isClosable: true,
       });
     } finally {
-      setLoading(false);
+      setPaymentLoading(false);
     }
   };
 
   const updateStage = async (direction: 'next' | 'previous') => {
     if (!project) return;
 
-    const currentIndex = PROJECT_STAGES.indexOf(project.current_stage);
-    if (currentIndex === -1) return;
-
-    // Don't allow going back before first stage or forward after last stage
-    if (
-      (direction === 'previous' && currentIndex === 0) ||
-      (direction === 'next' && currentIndex === PROJECT_STAGES.length - 1)
-    ) return;
-
-    const newStage = direction === 'next' 
-      ? PROJECT_STAGES[currentIndex + 1]
-      : PROJECT_STAGES[currentIndex - 1];
-    
-    const isCompleted = newStage === PROJECT_STAGES[PROJECT_STAGES.length - 1];
-
+    setStageLoading(true);
     try {
+      const currentIndex = PROJECT_STAGES.indexOf(project.current_stage);
+      if (currentIndex === -1) return;
+
+      // Don't allow going back before first stage or forward after last stage
+      if (
+        (direction === 'previous' && currentIndex === 0) ||
+        (direction === 'next' && currentIndex === PROJECT_STAGES.length - 1)
+      ) return;
+
+      const newStage = direction === 'next' 
+        ? PROJECT_STAGES[currentIndex + 1]
+        : PROJECT_STAGES[currentIndex - 1];
+      
+      const isCompleted = newStage === PROJECT_STAGES[PROJECT_STAGES.length - 1];
+
       const { data, error } = await supabase
         .from('projects')
         .update({
@@ -417,6 +446,8 @@ const ProjectDetails = () => {
       }
     } catch (error) {
       console.error('Error updating stage:', error);
+    } finally {
+      setStageLoading(false);
     }
   };
 
@@ -495,19 +526,11 @@ const ProjectDetails = () => {
     return isAdmin && user?.email !== 'contact@axisogreen.in';
   };
 
-  // Handle form input changes
-  const handleCustomerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCustomerFormData(prev => ({
-      ...prev,
-      [name]: name === 'kwh' ? parseFloat(value) || 0 : value
-    }));
-  };
-
   // Handle customer details update
   const handleCustomerUpdate = async () => {
     if (!project || !id) return;
 
+    setEditLoading(true);
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -553,6 +576,8 @@ const ProjectDetails = () => {
         duration: 3000,
         isClosable: true,
       });
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -604,7 +629,7 @@ const ProjectDetails = () => {
                     icon={<EditIcon />}
                     size="sm"
                     colorScheme="blue"
-                    onClick={onEditOpen}
+                    onClick={handleEditOpen}
                   />
                 </Tooltip>
               )}
@@ -655,6 +680,7 @@ const ProjectDetails = () => {
                   name="customer_name"
                   value={customerFormData.customer_name}
                   onChange={handleCustomerFormChange}
+                  isDisabled={editLoading}
                 />
               </FormControl>
               
@@ -665,6 +691,7 @@ const ProjectDetails = () => {
                   type="email"
                   value={customerFormData.email}
                   onChange={handleCustomerFormChange}
+                  isDisabled={editLoading}
                 />
               </FormControl>
               
@@ -674,6 +701,7 @@ const ProjectDetails = () => {
                   name="phone"
                   value={customerFormData.phone}
                   onChange={handleCustomerFormChange}
+                  isDisabled={editLoading}
                 />
               </FormControl>
               
@@ -683,6 +711,7 @@ const ProjectDetails = () => {
                   name="address"
                   value={customerFormData.address}
                   onChange={handleCustomerFormChange}
+                  isDisabled={editLoading}
                 />
               </FormControl>
               
@@ -691,17 +720,23 @@ const ProjectDetails = () => {
                 <Input 
                   name="kwh"
                   type="number"
-                  value={customerFormData.kwh || ''}
+                  value={customerFormData.kwh}
                   onChange={handleCustomerFormChange}
+                  isDisabled={editLoading}
                 />
               </FormControl>
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onEditClose}>
+            <Button variant="ghost" mr={3} onClick={onEditClose} isDisabled={editLoading}>
               Cancel
             </Button>
-            <Button colorScheme="blue" onClick={handleCustomerUpdate}>
+            <Button 
+              colorScheme="blue" 
+              onClick={handleCustomerUpdate} 
+              isLoading={editLoading}
+              loadingText="Saving"
+            >
               Save Changes
             </Button>
           </ModalFooter>
@@ -721,6 +756,7 @@ const ProjectDetails = () => {
                   colorScheme="yellow"
                   onClick={() => updateStage('previous')}
                   disabled={project.current_stage === PROJECT_STAGES[0]}
+                  isLoading={stageLoading}
                   size="sm"
                 >
                   ← Previous Stage
@@ -729,6 +765,7 @@ const ProjectDetails = () => {
                   colorScheme="blue"
                   onClick={() => updateStage('next')}
                   disabled={project.current_stage === PROJECT_STAGES[PROJECT_STAGES.length - 1]}
+                  isLoading={stageLoading}
                   size="sm"
                 >
                   Next Stage →
@@ -763,12 +800,14 @@ const ProjectDetails = () => {
                   max={project.balance_amount}
                   min={0}
                   step="0.01"
+                  isDisabled={paymentLoading}
                 />
                 <Button
                   colorScheme="green"
                   onClick={handlePayment}
-                  isLoading={loading}
-                  isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > project.balance_amount}
+                  isLoading={paymentLoading}
+                  loadingText="Adding"
+                  isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > project.balance_amount || paymentLoading}
                 >
                   Add Payment
                 </Button>
