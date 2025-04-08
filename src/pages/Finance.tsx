@@ -88,14 +88,37 @@ const Finance: React.FC = () => {
         }, 0);
         setTotalOutstanding(totalOutstanding);
 
-        // Calculate expected this month (simplistic approach)
-        // For a real app, you would need more sophisticated logic based on payment schedules
+        // Calculate expected this month based on 45-day collection timeframe
+        const currentDate = new Date();
         const expectedThisMonth = data
-          .filter(p => p.status === 'active')
+          .filter(p => p.status === 'active' && p.start_date)
           .reduce((sum, project) => {
-            // Assuming 20% of the balance amount is expected this month for active projects
-            return sum + (project.balance_amount * 0.2);
+            const startDate = new Date(project.start_date);
+            
+            // If start date isn't valid, skip this project
+            if (isNaN(startDate.getTime())) return sum;
+            
+            // Calculate the due date (start date + 45 days)
+            const dueDate = new Date(startDate);
+            dueDate.setDate(dueDate.getDate() + 45);
+            
+            // Calculate current month start and end
+            const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            
+            // If due date falls within current month, include the balance in expected amount
+            if (dueDate >= monthStart && dueDate <= monthEnd) {
+              return sum + (project.balance_amount || 0);
+            }
+            
+            // If due date has already passed but payment is still outstanding
+            if (dueDate < currentDate) {
+              return sum + (project.balance_amount || 0);
+            }
+            
+            return sum;
           }, 0);
+          
         setTotalExpectedThisMonth(expectedThisMonth);
       }
     } catch (error) {
@@ -147,7 +170,7 @@ const Finance: React.FC = () => {
             <Stat>
               <StatLabel>Expected This Month</StatLabel>
               <StatNumber>₹{totalExpectedThisMonth.toLocaleString()}</StatNumber>
-              <Text fontSize="sm" color="gray.500">Estimated collections</Text>
+              <Text fontSize="sm" color="gray.500">Based on 45-day collection timeframe</Text>
             </Stat>
           </CardBody>
         </Card>

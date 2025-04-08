@@ -58,37 +58,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             Axiso Green Energy
           </Text>
           
-          {/* Only show non-finance navigation for regular users */}
-          {!isFinance && (
-            <>
-              <ChakraLink
-                as={RouterLink}
-                to="/dashboard"
-                mr="4"
-                color={location.pathname === '/dashboard' ? 'green.600' : 'gray.600'}
-                fontWeight={location.pathname === '/dashboard' ? 'bold' : 'normal'}
-              >
-                Dashboard
-              </ChakraLink>
-              <ChakraLink
-                as={RouterLink}
-                to="/projects"
-                mr="4"
-                color={location.pathname.includes('/projects') ? 'green.600' : 'gray.600'}
-                fontWeight={location.pathname.includes('/projects') ? 'bold' : 'normal'}
-              >
-                Projects
-              </ChakraLink>
-              <ChakraLink
-                as={RouterLink}
-                to="/reports"
-                color={location.pathname === '/reports' ? 'green.600' : 'gray.600'}
-                fontWeight={location.pathname === '/reports' ? 'bold' : 'normal'}
-              >
-                Reports
-              </ChakraLink>
-            </>
-          )}
+          {/* Navigation links for all users */}
+          <ChakraLink
+            as={RouterLink}
+            to="/dashboard"
+            mr="4"
+            color={location.pathname === '/dashboard' ? 'green.600' : 'gray.600'}
+            fontWeight={location.pathname === '/dashboard' ? 'bold' : 'normal'}
+          >
+            Dashboard
+          </ChakraLink>
+          <ChakraLink
+            as={RouterLink}
+            to="/projects"
+            mr="4"
+            color={location.pathname.includes('/projects') ? 'green.600' : 'gray.600'}
+            fontWeight={location.pathname.includes('/projects') ? 'bold' : 'normal'}
+          >
+            Projects
+          </ChakraLink>
+          <ChakraLink
+            as={RouterLink}
+            to="/reports"
+            mr="4"
+            color={location.pathname === '/reports' ? 'green.600' : 'gray.600'}
+            fontWeight={location.pathname === '/reports' ? 'bold' : 'normal'}
+          >
+            Reports
+          </ChakraLink>
           
           {/* Show Finance link only for finance users */}
           {isFinance && (

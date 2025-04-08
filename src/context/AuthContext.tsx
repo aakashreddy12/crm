@@ -176,12 +176,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isClosable: true,
         });
         
-        // Redirect finance user to finance page
-        if (email === 'dhanush@axisogreen.in') {
-          navigate('/finance');
-        } else {
-          navigate('/dashboard');
-        }
+        // Redirect all users to dashboard
+        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('Login error:', error);

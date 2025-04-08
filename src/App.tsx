@@ -11,16 +11,12 @@ import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Create a special finance route component
+// Create a finance route component that only checks for authentication
 const FinanceRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isFinance } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (!isFinance) {
-    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -92,11 +88,11 @@ const App: React.FC = () => {
               <Route
                 path="/finance"
                 element={
-                  <FinanceRoute>
+                  <PrivateRoute>
                     <Layout>
                       <Finance />
                     </Layout>
-                  </FinanceRoute>
+                  </PrivateRoute>
                 }
               />
               <Route
