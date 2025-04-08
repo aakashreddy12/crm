@@ -91,12 +91,15 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         // Set up cell dimensions
         const labelColWidth = 80;
         const dataColWidth = 120;
-        const amountBoxWidth = 65;
         
         // Layout coordinates
         const labelX = margin;
         const dataX = margin + labelColWidth;
-        const amountX = pageWidth - margin - amountBoxWidth;
+        
+        // Green box dimensions - smaller as requested
+        const greenBoxWidth = 55;
+        const greenBoxHeight = rowHeight * 2; // Reduced height
+        const greenBoxX = dataX + dataColWidth - greenBoxWidth;
         
         // Reference ID
         const refNumber = 'ZBYKUQLSS';
@@ -136,35 +139,33 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           doc.text(text, x + 5, textY);
         };
         
-        // Calculate the right position for the green box
-        const greenBoxWidth = 60;
-        const greenBoxX = dataX + dataColWidth - greenBoxWidth;
-        const greenBoxHeight = rowHeight * 3;
-        
-        // Draw the green box first
+        // Draw the green box first - smaller
         doc.setFillColor(140, 198, 63); // Green color
         doc.rect(greenBoxX, startY, greenBoxWidth, greenBoxHeight, 'F');
         
         // Amount Received label
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(15);
-        doc.text('Amount Received', greenBoxX + 5, startY + 10);
+        doc.setFontSize(14);
+        doc.text('Amount', greenBoxX + 5, startY + 10);
+        doc.text('Received', greenBoxX + 5, startY + 22);
         
         // Amount value - positioned to match example
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(21);
+        doc.setFontSize(18);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, greenBoxX + 5, startY + 25);
+        doc.text(amountText, greenBoxX + 5, startY + greenBoxHeight + 12);
         
         // Draw data cells for payment details - adjusted to not overlap with green box
         const adjustedDataWidth = dataColWidth - greenBoxWidth;
         drawDataCell(dataX, startY, adjustedDataWidth, rowHeight, date);
         drawDataCell(dataX, startY + rowHeight, adjustedDataWidth, rowHeight, refNumber);
-        drawDataCell(dataX, startY + rowHeight * 2, adjustedDataWidth, rowHeight, paymentMode);
-        drawDataCell(dataX, startY + rowHeight * 3, adjustedDataWidth, rowHeight, `${placeOfSupply} (36)`);
         
-        // Amount in words - spanning two rows - positioned below all other rows
+        // Fill all other data fields with the background color
+        drawDataCell(dataX, startY + rowHeight * 2, dataColWidth, rowHeight, paymentMode);
+        drawDataCell(dataX, startY + rowHeight * 3, dataColWidth, rowHeight, `${placeOfSupply} (36)`);
+        
+        // Amount in words - spanning two rows
         const amountInWords = 'Indian Rupee Ten Thousand Only';
         drawDataCell(dataX, startY + rowHeight * 4, dataColWidth, rowHeight * 2, amountInWords);
         
@@ -175,15 +176,16 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFontSize(15);
         doc.text('Received From', labelX, receivedFromY);
         
-        // Customer name
-        drawDataCell(labelX, receivedFromY + 5, labelColWidth, rowHeight, receivedFrom);
+        // Customer name with blue background
+        const fullWidth = dataColWidth + labelColWidth;
+        drawDataCell(labelX, receivedFromY + 5, fullWidth, rowHeight, receivedFrom);
         
-        // Customer address below name
+        // Customer address with same blue background
         if (customerAddress) {
-          drawDataCell(labelX, receivedFromY + 5 + rowHeight, labelColWidth, rowHeight, customerAddress, 11);
+          drawDataCell(labelX, receivedFromY + 5 + rowHeight, fullWidth, rowHeight, customerAddress, 11);
         }
         
-        // Add signature at bottom right - matching the exact position in example
+        // Add signature at bottom right
         if (signatureImg) {
           const signatureY = receivedFromY + 5;
           doc.addImage(signatureImg, 'PNG', greenBoxX, signatureY, 50, 20);
