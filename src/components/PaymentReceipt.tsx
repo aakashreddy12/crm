@@ -98,7 +98,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         
         // Green box dimensions - smaller as requested
         const greenBoxWidth = 55;
-        const greenBoxHeight = rowHeight * 3; // Increased to fit amount text
+        const greenBoxHeight = rowHeight * 3; // Height for green box
         const greenBoxX = dataX + dataColWidth - greenBoxWidth;
         
         // Reference ID
@@ -143,18 +143,17 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
         doc.setFillColor(140, 198, 63); // Green color
         doc.rect(greenBoxX, startY, greenBoxWidth, greenBoxHeight, 'F');
         
-        // Amount Received label inside green box
+        // Amount Received label on a single line inside green box
         doc.setTextColor(255, 255, 255); // White text
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(14);
-        doc.text('Amount', greenBoxX + 5, startY + 10);
-        doc.text('Received', greenBoxX + 5, startY + 22);
+        doc.setFontSize(12);
+        doc.text('Amount Received', greenBoxX + 5, startY + 10);
         
         // Amount value inside green box
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         const amountText = `Rs.${amount.toLocaleString()}`;
-        doc.text(amountText, greenBoxX + 5, startY + 38);
+        doc.text(amountText, greenBoxX + 5, startY + 30);
         
         // Draw data cells for payment details - adjusted to not overlap with green box
         const adjustedDataWidth = dataColWidth - greenBoxWidth;
@@ -198,8 +197,10 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           return lines;
         };
         
-        // Customer name with blue background
+        // Customer information section - limiting colored area to just name and address
         const fullWidth = dataColWidth + labelColWidth;
+        
+        // Customer name with blue background
         drawDataCell(labelX, receivedFromY + 5, fullWidth, rowHeight, receivedFrom);
         
         // Customer address with same blue background, possibly multiple rows
@@ -223,9 +224,9 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = (props) => {
           });
         }
         
-        // Add signature at bottom right
+        // Add signature at appropriate position with clear space between address area
         if (signatureImg) {
-          const signatureY = receivedFromY + 5;
+          const signatureY = receivedFromY + 5 + (customerAddress ? formatAddressToLines(customerAddress).length * rowHeight + 20 : rowHeight + 20);
           doc.addImage(signatureImg, 'PNG', greenBoxX, signatureY, 50, 20);
           
           doc.setFont('helvetica', 'normal');
