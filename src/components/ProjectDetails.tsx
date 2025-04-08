@@ -169,7 +169,14 @@ const ProjectDetails = () => {
     }
 
     fetchProjectAndPayments();
-  }, [fetchProjectAndPayments, isAuthenticated, navigate]);
+    
+    // Set up an interval to refresh the data every 5 minutes to prevent session timeouts
+    const intervalId = setInterval(() => {
+      fetchProjectAndPayments();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [id, isAuthenticated, navigate]);
 
   // Initialize customer form data when project is loaded (only once)
   useEffect(() => {

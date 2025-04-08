@@ -125,9 +125,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // Set up token refresh mechanism - refreshes token every 30 minutes to prevent expiry
+    const refreshInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.error('Error refreshing token:', error);
+          // If refresh fails and user is authenticated, notify them
+          if (isAuthenticated) {
+            toast({
+              title: 'Session expired',
+              description: 'Please log in again',
+              status: 'warning',
+              duration: 5000,
+              isClosable: true,
+            });
+            // Force logout if refresh fails
+            logout();
+          }
+        } else if (data.session) {
+          console.log('Token refreshed successfully');
+        }
+      } catch (err) {
+        console.error('Failed to refresh token:', err);
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearInterval(refreshInterval);
     };
   }, []);
 
