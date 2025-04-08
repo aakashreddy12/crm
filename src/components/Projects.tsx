@@ -48,6 +48,12 @@ interface Project {
   kwh: number;
 }
 
+// Define filter structure
+interface FilterOptions {
+  field: string;
+  value: string;
+}
+
 // Utility function to calculate elapsed time since start date
 const calculateElapsedTime = (startDateStr: string | null) => {
   if (!startDateStr) return 'N/A';
@@ -96,12 +102,27 @@ const Projects = () => {
     kwh: '',
   });
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [activeFilters, setActiveFilters] = useState<FilterOptions[]>([]);
   const toast = useToast();
+  
+  // Filter modal state
+  const { 
+    isOpen: isFilterOpen, 
+    onOpen: onFilterOpen, 
+    onClose: onFilterClose 
+  } = useDisclosure();
+  const [filterField, setFilterField] = useState<string>('');
+  const [filterValue, setFilterValue] = useState<string>('');
 
   useEffect(() => {
     fetchProjects();
-  }, [filter]);
+  }, []);
+
+  // Apply filters whenever activeFilters changes
+  useEffect(() => {
+    applyFilters();
+  }, [activeFilters, allProjects]);
 
   const fetchProjects = async () => {
     try {
@@ -109,12 +130,6 @@ const Projects = () => {
         .from('projects')
         .select('*')
         .neq('status', 'deleted');
-
-      if (filter === 'active') {
-        query = query.eq('status', 'active');
-      } else if (filter === 'completed') {
-        query = query.eq('status', 'completed');
-      }
 
       const { data, error } = await query.order('created_at', { ascending: false });
       
@@ -131,6 +146,7 @@ const Projects = () => {
       }
       
       if (data) {
+        setAllProjects(data);
         setProjects(data);
       }
     } catch (error) {
@@ -143,6 +159,107 @@ const Projects = () => {
         isClosable: true,
       });
     }
+  };
+
+  // Apply current filters to the project list
+  const applyFilters = () => {
+    if (activeFilters.length === 0) {
+      setProjects(allProjects);
+      return;
+    }
+
+    const filteredProjects = allProjects.filter(project => {
+      return activeFilters.every(filter => {
+        const projectValue = String(project[filter.field as keyof Project] || '').toLowerCase();
+        return projectValue.includes(filter.value.toLowerCase());
+      });
+    });
+
+    setProjects(filteredProjects);
+  };
+
+  // Get available values for a field
+  const getFieldOptions = (field: string): string[] => {
+    if (!field) return [];
+
+    // Get unique values from the projects using a simple object to track uniqueness
+    const uniqueValuesMap: Record<string, boolean> = {};
+    
+    allProjects.forEach(project => {
+      const value = project[field as keyof Project];
+      if (value !== null && value !== undefined) {
+        uniqueValuesMap[String(value)] = true;
+      }
+    });
+
+    return Object.keys(uniqueValuesMap);
+  };
+
+  // Render the appropriate input based on selected field
+  const renderFilterValueInput = () => {
+    if (!filterField) return (
+      <Input
+        value={filterValue}
+        onChange={(e) => setFilterValue(e.target.value)}
+        placeholder="Select a field first"
+        isDisabled={!filterField}
+      />
+    );
+
+    // Fields with predefined options
+    if (['status', 'project_type', 'payment_mode', 'current_stage'].includes(filterField)) {
+      const options = getFieldOptions(filterField);
+      
+      return (
+        <Select
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder={`Select ${filterField}`}
+        >
+          {options.map(option => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </Select>
+      );
+    }
+
+    // Default text input for other fields
+    return (
+      <Input
+        value={filterValue}
+        onChange={(e) => setFilterValue(e.target.value)}
+        placeholder="Enter filter value"
+      />
+    );
+  };
+
+  // Add new filter
+  const addFilter = () => {
+    if (!filterField || !filterValue) {
+      toast({
+        title: 'Filter Error',
+        description: 'Please select both a field and value to filter by',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setActiveFilters(prev => [...prev, { field: filterField, value: filterValue }]);
+    setFilterField('');
+    setFilterValue('');
+    onFilterClose();
+  };
+
+  // Remove a filter
+  const removeFilter = (index: number) => {
+    setActiveFilters(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setActiveFilters([]);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -307,25 +424,113 @@ const Projects = () => {
         </Button>
         <HStack>
           <Button 
-            colorScheme={filter === 'all' ? 'blue' : 'gray'} 
-            onClick={() => setFilter('all')}
+            colorScheme="teal" 
+            onClick={onFilterOpen}
+            leftIcon={<Box as="span">🔍</Box>}
           >
-            All Projects
+            Filter Projects
           </Button>
-          <Button 
-            colorScheme={filter === 'active' ? 'blue' : 'gray'} 
-            onClick={() => setFilter('active')}
-          >
-            Active Projects
-          </Button>
-          <Button 
-            colorScheme={filter === 'completed' ? 'blue' : 'gray'} 
-            onClick={() => setFilter('completed')}
-          >
-            Completed Projects
-          </Button>
+          {activeFilters.length > 0 && (
+            <Button 
+              colorScheme="red" 
+              variant="outline" 
+              onClick={clearAllFilters}
+              size="sm"
+            >
+              Clear Filters ({activeFilters.length})
+            </Button>
+          )}
         </HStack>
       </HStack>
+
+      {/* Display active filters */}
+      {activeFilters.length > 0 && (
+        <Box mb={4} p={2} borderWidth="1px" borderRadius="md">
+          <Text fontWeight="bold" mb={2}>Active Filters:</Text>
+          <HStack spacing={2} flexWrap="wrap">
+            {activeFilters.map((filter, index) => (
+              <Badge 
+                key={index} 
+                colorScheme="teal" 
+                p={2} 
+                borderRadius="md"
+              >
+                {filter.field}: {filter.value}
+                <Button 
+                  size="xs" 
+                  ml={1} 
+                  onClick={() => removeFilter(index)}
+                  variant="ghost"
+                >
+                  ×
+                </Button>
+              </Badge>
+            ))}
+          </HStack>
+        </Box>
+      )}
+
+      {/* Filter Modal */}
+      <Modal isOpen={isFilterOpen} onClose={onFilterClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Filter Projects</ModalHeader>
+          <CloseButton position="absolute" right={2} top={2} onClick={onFilterClose} />
+          <ModalBody>
+            <VStack spacing={4}>
+              <Text fontSize="sm" color="gray.600" mb={2}>
+                Select a field and value to filter the projects. You can add multiple filters.
+              </Text>
+              
+              <FormControl>
+                <FormLabel>Filter By</FormLabel>
+                <Select
+                  value={filterField}
+                  onChange={(e) => {
+                    setFilterField(e.target.value);
+                    setFilterValue(''); // Reset value when field changes
+                  }}
+                  placeholder="Select field to filter by"
+                >
+                  <option value="name">Project Name</option>
+                  <option value="customer_name">Customer Name</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Phone</option>
+                  <option value="address">Address</option>
+                  <option value="project_type">Project Type</option>
+                  <option value="payment_mode">Payment Mode</option>
+                  <option value="status">Status</option>
+                  <option value="current_stage">Current Stage</option>
+                  <option value="kwh">KWH</option>
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Value</FormLabel>
+                {renderFilterValueInput()}
+                <Text fontSize="xs" color="gray.500" mt={1}>
+                  {filterField === 'status' ? 
+                    'Filter by project status (active/completed)' : 
+                    filterField === 'project_type' ? 
+                    'Filter by DCR or Non DCR projects' :
+                    filterField === 'payment_mode' ?
+                    'Filter by Cash or Loan payment mode' :
+                    'Enter text to filter (case insensitive)'}
+                </Text>
+              </FormControl>
+
+              <Button 
+                colorScheme="teal" 
+                width="full" 
+                onClick={addFilter}
+                isDisabled={!filterField || !filterValue}
+              >
+                Apply Filter
+              </Button>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       <TableContainer>
         <Table variant="simple">
