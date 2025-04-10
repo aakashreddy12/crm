@@ -22,6 +22,7 @@ import {
   Td,
   Badge,
   Tooltip,
+  Button,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -98,6 +99,8 @@ const Dashboard = () => {
   });
   const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'stage'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Check if current user is contact@axisogreen.in
   const isRestrictedUser = user?.email === 'contact@axisogreen.in';
@@ -131,11 +134,8 @@ const Dashboard = () => {
           totalKwh,
         });
 
-        // Sort active projects by creation date (newest first)
-        const sortedActiveProjects = active.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        setActiveProjects(sortedActiveProjects);
+        // Sort active projects by selected criteria
+        sortProjects(active);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -143,6 +143,52 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  // Function to sort projects based on selected criteria
+  const sortProjects = (projects: Project[]) => {
+    let sortedProjects = [...projects];
+    
+    if (sortBy === 'date') {
+      sortedProjects.sort((a, b) => {
+        const dateA = a.start_date ? new Date(a.start_date).getTime() : new Date(a.created_at).getTime();
+        const dateB = b.start_date ? new Date(b.start_date).getTime() : new Date(b.created_at).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    } else if (sortBy === 'amount') {
+      sortedProjects.sort((a, b) => {
+        return sortOrder === 'asc' 
+          ? a.proposal_amount - b.proposal_amount
+          : b.proposal_amount - a.proposal_amount;
+      });
+    } else if (sortBy === 'stage') {
+      sortedProjects.sort((a, b) => {
+        return sortOrder === 'asc'
+          ? a.current_stage.localeCompare(b.current_stage)
+          : b.current_stage.localeCompare(a.current_stage);
+      });
+    }
+    
+    setActiveProjects(sortedProjects);
+  };
+
+  // Handle sort change
+  const handleSortChange = (criteria: 'date' | 'amount' | 'stage') => {
+    if (sortBy === criteria) {
+      // Toggle order if same criteria is selected
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new criteria and default to descending
+      setSortBy(criteria);
+      setSortOrder('desc');
+    }
+  };
+
+  // Sort projects when sort criteria changes
+  useEffect(() => {
+    if (activeProjects.length > 0) {
+      sortProjects(activeProjects);
+    }
+  }, [sortBy, sortOrder]);
 
   if (loading) {
     return (
@@ -185,7 +231,35 @@ const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <Heading size="md">Active Projects</Heading>
+            <HStack justifyContent="space-between">
+              <Heading size="md">Active Projects</Heading>
+              <HStack spacing={2}>
+                <Button
+                  size="sm"
+                  colorScheme={sortBy === 'date' ? 'blue' : 'gray'}
+                  onClick={() => handleSortChange('date')}
+                  leftIcon={sortBy === 'date' ? <Box as="span">{sortOrder === 'asc' ? '↑' : '↓'}</Box> : undefined}
+                >
+                  Duration
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme={sortBy === 'amount' ? 'blue' : 'gray'}
+                  onClick={() => handleSortChange('amount')}
+                  leftIcon={sortBy === 'amount' ? <Box as="span">{sortOrder === 'asc' ? '↑' : '↓'}</Box> : undefined}
+                >
+                  Amount
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme={sortBy === 'stage' ? 'blue' : 'gray'}
+                  onClick={() => handleSortChange('stage')}
+                  leftIcon={sortBy === 'stage' ? <Box as="span">{sortOrder === 'asc' ? '↑' : '↓'}</Box> : undefined}
+                >
+                  Stage
+                </Button>
+              </HStack>
+            </HStack>
           </CardHeader>
           <CardBody>
             <Table variant="simple">
