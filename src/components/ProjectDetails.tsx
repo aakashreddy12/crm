@@ -169,14 +169,7 @@ const ProjectDetails = () => {
     }
 
     fetchProjectAndPayments();
-    
-    // Set up an interval to refresh the data every 5 minutes to prevent session timeouts
-    const intervalId = setInterval(() => {
-      fetchProjectAndPayments();
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(intervalId);
-  }, [id, isAuthenticated, navigate]);
+  }, [fetchProjectAndPayments, isAuthenticated, navigate]);
 
   // Initialize customer form data when project is loaded (only once)
   useEffect(() => {
@@ -419,43 +412,68 @@ const ProjectDetails = () => {
     }
   };
 
-  const updateStage = async (direction: 'next' | 'previous') => {
-    if (!project) return;
-
-    setStageLoading(true);
+  const handleStageChange = async (newStage: string) => {
     try {
-      const currentIndex = PROJECT_STAGES.indexOf(project.current_stage);
-      if (currentIndex === -1) return;
-
-      // Don't allow going back before first stage or forward after last stage
-      if (
-        (direction === 'previous' && currentIndex === 0) ||
-        (direction === 'next' && currentIndex === PROJECT_STAGES.length - 1)
-      ) return;
-
-      const newStage = direction === 'next' 
-        ? PROJECT_STAGES[currentIndex + 1]
-        : PROJECT_STAGES[currentIndex - 1];
-      
-      const isCompleted = newStage === PROJECT_STAGES[PROJECT_STAGES.length - 1];
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('projects')
-        .update({
-          current_stage: newStage,
-          status: isCompleted ? 'completed' : 'active'
-        })
-        .eq('id', id)
-        .select();
+        .update({ stage: newStage })
+        .eq('id', project.id);
 
       if (error) throw error;
-      if (data) {
-        setProject(data[0]);
-      }
+
+      setProject((prevProject) => {
+        if (!prevProject) return null;
+        return { ...prevProject, stage: newStage };
+      });
+      toast({
+        title: 'Success',
+        description: 'Project stage updated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
-      console.error('Error updating stage:', error);
-    } finally {
-      setStageLoading(false);
+      console.error('Error updating project stage:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project stage',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case 'Advance Payment Done':
+        return 'bg-green-100 text-green-800';
+      case 'Advance Payment -- Approvals / First Payment':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Approvals -- Loan Applications':
+        return 'bg-blue-100 text-blue-800';
+      case 'Loan Started -- Loan Process':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'Loan Approved / First Payment Collected -- Material Order':
+        return 'bg-purple-100 text-purple-800';
+      case 'Materials Ordered -- Materials Deliver':
+        return 'bg-pink-100 text-pink-800';
+      case 'Materials Delivered -- Installation':
+        return 'bg-red-100 text-red-800';
+      case 'Installation Done / Second Payment Done -- Net meter Application':
+        return 'bg-orange-100 text-orange-800';
+      case 'Net Meter Application -- Net Meter Installation':
+        return 'bg-amber-100 text-amber-800';
+      case 'Net Meter Installed -- Inspection / Final Payment':
+        return 'bg-lime-100 text-lime-800';
+      case 'Approved Inspection -- Subsidy in Progress':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'Subsidy Disbursed -- Final payment':
+        return 'bg-teal-100 text-teal-800';
+      case 'Final Payment Done':
+        return 'bg-cyan-100 text-cyan-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -762,7 +780,7 @@ const ProjectDetails = () => {
               <HStack spacing={2}>
                 <Button 
                   colorScheme="yellow"
-                  onClick={() => updateStage('previous')}
+                  onClick={() => handleStageChange(PROJECT_STAGES[Math.max(0, currentStageIndex - 1)])}
                   disabled={project.current_stage === PROJECT_STAGES[0]}
                   isLoading={stageLoading}
                   size="sm"
@@ -771,7 +789,7 @@ const ProjectDetails = () => {
                 </Button>
                 <Button 
                   colorScheme="blue"
-                  onClick={() => updateStage('next')}
+                  onClick={() => handleStageChange(PROJECT_STAGES[Math.min(PROJECT_STAGES.length - 1, currentStageIndex + 1)])}
                   disabled={project.current_stage === PROJECT_STAGES[PROJECT_STAGES.length - 1]}
                   isLoading={stageLoading}
                   size="sm"
