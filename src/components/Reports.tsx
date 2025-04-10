@@ -126,8 +126,9 @@ const Reports = () => {
         const monthNames = Object.keys(monthlyKWHData);
         
         projects.forEach((project: Project) => {
-          const dateToUse = project.start_date || project.created_at;
-          const projectDate = new Date(dateToUse);
+          if (!project.start_date) return; // Skip projects without a start date
+          
+          const projectDate = new Date(project.start_date);
           const projectYear = projectDate.getFullYear();
           const projectMonth = projectDate.getMonth(); // 0-11
           

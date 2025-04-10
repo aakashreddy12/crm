@@ -210,8 +210,8 @@ const Dashboard = () => {
                     <Td>₹{project.proposal_amount.toLocaleString()}</Td>
                     <Td>{project.kwh || 'N/A'}</Td>
                     <Td>
-                      <Tooltip label={project.start_date ? `Project started on ${new Date(project.start_date).toLocaleDateString()}` : 'Using creation date'}>
-                        <Text>{calculateElapsedTime(project.start_date || project.created_at)}</Text>
+                      <Tooltip label={project.start_date ? `Project started on ${new Date(project.start_date).toLocaleDateString()}` : 'Start date not set'}>
+                        <Text>{calculateElapsedTime(project.start_date)}</Text>
                       </Tooltip>
                     </Td>
                   </Tr>

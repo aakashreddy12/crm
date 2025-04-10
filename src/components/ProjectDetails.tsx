@@ -488,47 +488,45 @@ const ProjectDetails = () => {
             <Table variant="simple" size="md">
               <Thead>
                 <Tr>
-                  <Th>Date</Th>
                   <Th>Payment Type</Th>
                   <Th isNumeric>Amount</Th>
+                  <Th>Payment Date</Th>
                   <Th>Time Elapsed</Th>
                   <Th>Actions</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {project.advance_payment > 0 && (
-                  <Tr>
-                    <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : new Date(project.created_at).toLocaleDateString()}</Td>
-                    <Td>Advance Payment</Td>
-                    <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
-                    <Td>{project.start_date ? getTimeElapsed(project.start_date) : getTimeElapsed(project.created_at)}</Td>
-                    <Td>
-                      {hasReceiptAccess() && (
-                        <Button
-                          size="sm"
-                          colorScheme="blue"
-                          onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date || project.created_at)}
-                          isDisabled={loading}
-                        >
-                          Download Receipt
-                        </Button>
-                      )}
-                    </Td>
-                  </Tr>
-                )}
-                {project.payment_history?.map((payment) => (
+                <Tr>
+                  <Td>Advance Payment</Td>
+                  <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
+                  <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : 'Not set'}</Td>
+                  <Td>{project.start_date ? getTimeElapsed(project.start_date) : 'N/A'}</Td>
+                  <Td>
+                    {hasReceiptAccess() && (
+                      <Button 
+                        size="sm" 
+                        colorScheme="teal" 
+                        onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date)}
+                        isDisabled={!hasReceiptAccess() || !project.start_date}
+                      >
+                        Download Receipt
+                      </Button>
+                    )}
+                  </Td>
+                </Tr>
+                {project.payment_history?.map(payment => (
                   <Tr key={payment.id}>
-                    <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
                     <Td>Regular Payment</Td>
                     <Td isNumeric>₹{payment.amount.toLocaleString()}</Td>
+                    <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
                     <Td>{getTimeElapsed(payment.created_at)}</Td>
                     <Td>
                       {hasReceiptAccess() && (
-                        <Button
-                          size="sm"
-                          colorScheme="blue"
+                        <Button 
+                          size="sm" 
+                          colorScheme="teal" 
                           onClick={() => handleDownloadReceipt(payment.amount, payment.created_at)}
-                          isDisabled={loading}
+                          isDisabled={!hasReceiptAccess() || !payment.created_at}
                         >
                           Download Receipt
                         </Button>
