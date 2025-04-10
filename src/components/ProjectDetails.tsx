@@ -416,14 +416,14 @@ const ProjectDetails = () => {
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ stage: newStage })
+        .update({ current_stage: newStage })
         .eq('id', project.id);
 
       if (error) throw error;
 
       setProject((prevProject) => {
         if (!prevProject) return null;
-        return { ...prevProject, stage: newStage };
+        return { ...prevProject, current_stage: newStage };
       });
       toast({
         title: 'Success',
