@@ -674,12 +674,23 @@ const ProjectDetails = () => {
                 <Text fontWeight="medium">Advance Payment:</Text>
                 <Text color="blue.500">₹{project.advance_payment.toLocaleString()}</Text>
               </HStack>
-              {project.loan_amount > 0 && (
-                <HStack justify="space-between" w="full">
-                  <Text fontWeight="medium">Loan Amount:</Text>
+              <HStack justify="space-between" w="full">
+                <Text fontWeight="medium">Loan Amount:</Text>
+                <HStack>
                   <Text color="purple.500">₹{project.loan_amount.toLocaleString()}</Text>
+                  {hasLoanEditAccess() && (
+                    <Tooltip label="Edit Loan Amount">
+                      <IconButton
+                        aria-label="Edit loan amount"
+                        icon={<EditIcon />}
+                        size="xs"
+                        colorScheme="purple"
+                        onClick={handleEditOpen}
+                      />
+                    </Tooltip>
+                  )}
                 </HStack>
-              )}
+              </HStack>
               <HStack justify="space-between" w="full">
                 <Text fontWeight="medium">Total Paid:</Text>
                 <Text color="green.500">₹{(project.advance_payment + (project.paid_amount || 0)).toLocaleString()}</Text>
