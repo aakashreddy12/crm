@@ -152,9 +152,18 @@ const Dashboard = () => {
     
     if (sortBy === 'date') {
       sortedProjects.sort((a, b) => {
+        const currentDate = new Date().getTime();
+        
+        // Get timestamps for start dates
         const dateA = a.start_date ? new Date(a.start_date).getTime() : new Date(a.created_at).getTime();
         const dateB = b.start_date ? new Date(b.start_date).getTime() : new Date(b.created_at).getTime();
-        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        
+        // Calculate durations in milliseconds
+        const durationA = currentDate - dateA;
+        const durationB = currentDate - dateB;
+        
+        // Sort by duration (shorter duration means more recent start date)
+        return sortOrder === 'asc' ? durationA - durationB : durationB - durationA;
       });
     } else if (sortBy === 'amount') {
       sortedProjects.sort((a, b) => {
