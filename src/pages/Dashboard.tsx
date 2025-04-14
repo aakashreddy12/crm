@@ -113,6 +113,7 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
+      console.log('Dashboard: Fetching projects from Supabase...');
       const { data: projects, error } = await supabase
         .from('projects')
         .select('*')
@@ -120,11 +121,17 @@ const Dashboard = () => {
 
       if (error) throw error;
 
+      console.log('Dashboard: Projects fetched:', projects?.length);
+
       if (projects) {
         // Get unique customer names for total customers count
         const uniqueCustomers = [...new Set(projects.map((p: Project) => p.customer_name))];
         const active = projects.filter((p: Project) => p.status === 'active');
         const completed = projects.filter((p: Project) => p.status === 'completed');
+        
+        console.log('Dashboard: Active projects count:', active.length);
+        console.log('Dashboard: Active project IDs:', active.map(p => p.id));
+        
         const totalRevenue = projects.reduce((sum: number, p: Project) => sum + (p.proposal_amount || 0), 0);
         const totalKwh = projects.reduce((sum: number, p: Project) => sum + (p.kwh || 0), 0);
 

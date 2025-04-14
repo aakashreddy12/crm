@@ -96,11 +96,15 @@ const Reports = () => {
         throw error;
       }
 
-      console.log('Projects fetched:', projects);
+      console.log('Reports: Projects fetched:', projects?.length);
 
       if (projects) {
         const active = projects.filter((p: Project) => p.status === 'active');
         const completed = projects.filter((p: Project) => p.status === 'completed');
+        
+        console.log('Reports: Active projects count:', active.length);
+        console.log('Reports: Active project IDs:', active.map(p => p.id));
+        
         const totalRevenue = projects.reduce((sum: number, p: Project) => sum + (p.proposal_amount || 0), 0);
         const totalKWH = projects.reduce((sum: number, p: Project) => sum + (p.kwh || 0), 0);
 
