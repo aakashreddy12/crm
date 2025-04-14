@@ -99,10 +99,20 @@ const Reports = () => {
       console.log('Reports: Projects fetched:', projects?.length);
 
       if (projects) {
-        const active = projects.filter((p: Project) => p.status === 'active');
-        const completed = projects.filter((p: Project) => p.status === 'completed');
+        // Log all statuses to check for case sensitivity issues
+        const allStatuses = [...new Set(projects.map(p => p.status))];
+        console.log('Reports: All statuses found:', allStatuses);
+        
+        // Ensure case-insensitive comparison for status
+        const active = projects.filter((p: Project) => 
+          typeof p.status === 'string' && p.status.toLowerCase() === 'active'
+        );
+        const completed = projects.filter((p: Project) => 
+          typeof p.status === 'string' && p.status.toLowerCase() === 'completed'
+        );
         
         console.log('Reports: Active projects count:', active.length);
+        console.log('Reports: Active project statuses:', active.map(p => p.status));
         console.log('Reports: Active project IDs:', active.map(p => p.id));
         
         const totalRevenue = projects.reduce((sum: number, p: Project) => sum + (p.proposal_amount || 0), 0);
