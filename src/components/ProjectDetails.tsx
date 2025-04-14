@@ -59,6 +59,7 @@ interface Project {
   advance_payment: number;
   balance_amount: number;
   paid_amount: number;
+  loan_amount: number;
   status: string;
   current_stage: string;
   project_type: 'DCR' | 'Non DCR';
@@ -69,7 +70,7 @@ interface Project {
   kwh: number;
 }
 
-const getTimeElapsed = (timestamp: string) => {
+const getTimeElapsed = (timestamp: string, isAdvancePayment: boolean = false) => {
   const now = new Date();
   const paymentDate = new Date(timestamp);
   const diffInMillis = now.getTime() - paymentDate.getTime();
@@ -114,7 +115,8 @@ const ProjectDetails = () => {
     email: '',
     phone: '',
     address: '',
-    kwh: 0
+    kwh: 0,
+    loan_amount: 0
   });
 
   // Add useEffect for timestamp updates
@@ -179,7 +181,8 @@ const ProjectDetails = () => {
         email: project.email || '',
         phone: project.phone || '',
         address: project.address || '',
-        kwh: project.kwh || 0
+        kwh: project.kwh || 0,
+        loan_amount: project.loan_amount || 0
       });
     }
   }, [project, isEditOpen]);
@@ -192,7 +195,8 @@ const ProjectDetails = () => {
         email: project.email || '',
         phone: project.phone || '',
         address: project.address || '',
-        kwh: project.kwh || 0
+        kwh: project.kwh || 0,
+        loan_amount: project.loan_amount || 0
       });
     }
     onEditOpen();
@@ -203,7 +207,7 @@ const ProjectDetails = () => {
     const { name, value } = e.target;
     setCustomerFormData(prev => ({
       ...prev,
-      [name]: name === 'kwh' ? (value === '' ? 0 : parseFloat(value) || 0) : value
+      [name]: (name === 'kwh' || name === 'loan_amount') ? (value === '' ? 0 : parseFloat(value) || 0) : value
     }));
   };
 
@@ -245,12 +249,11 @@ const ProjectDetails = () => {
 
     try {
       const newPaidAmount = project.advance_payment + (project.paid_amount || 0) + amount;
-      const newBalanceAmount = project.proposal_amount - newPaidAmount;
 
-      if (newBalanceAmount < 0) {
+      if (newPaidAmount > project.proposal_amount) {
         toast({
           title: 'Error',
-          description: 'Payment amount cannot exceed the remaining balance',
+          description: 'Payment amount cannot exceed the total amount',
           status: 'error',
           duration: 3000,
           isClosable: true,
@@ -273,7 +276,6 @@ const ProjectDetails = () => {
         .from('projects')
         .update({
           paid_amount: newPaidAmount - project.advance_payment,
-          balance_amount: newBalanceAmount
         })
         .eq('id', id)
         .select();
@@ -317,8 +319,8 @@ const ProjectDetails = () => {
   };
 
   const hasReceiptAccess = () => {
-    // Allow both admin users and contact@axisogreen.in to download receipts
-    return isAdmin || (user?.email === 'contact@axisogreen.in');
+    // Allow admin users, contact@axisogreen.in, and dhanush@axisogreen.in to download receipts
+    return isAdmin || (user?.email === 'contact@axisogreen.in') || (user?.email === 'dhanush@axisogreen.in');
   };
 
   const handleDownloadReceipt = (amount: number, date: string) => {
@@ -361,7 +363,9 @@ const ProjectDetails = () => {
         return;
       }
 
-      if (amount > project.balance_amount) {
+      const actualBalanceAmount = project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0));
+      
+      if (amount > actualBalanceAmount) {
         toast({
           title: 'Invalid Amount',
           description: 'Payment amount cannot exceed the remaining balance',
@@ -381,11 +385,12 @@ const ProjectDetails = () => {
 
       // Update the project's payment history in state
       if (paymentData && project) {
+        // Remove the explicit balance calculation and setting
         setProject({
           ...project,
           payment_history: [...(project.payment_history || []), paymentData[0]],
-          paid_amount: (project.paid_amount || 0) + amount,
-          balance_amount: project.balance_amount - amount
+          paid_amount: (project.paid_amount || 0) + amount
+          // balance_amount is a generated column, so we don't set it directly
         });
       }
 
@@ -414,33 +419,36 @@ const ProjectDetails = () => {
 
   const handleStageChange = async (newStage: string) => {
     try {
+      setStageLoading(true);
       const { error } = await supabase
         .from('projects')
-        .update({ current_stage: newStage })
-        .eq('id', project.id);
+        .update({ 
+          current_stage: newStage,
+          status: newStage === 'Final Payment Done' ? 'completed' : 'active' // Update status to completed if final stage
+        })
+        .eq('id', id);
 
       if (error) throw error;
 
-      setProject((prevProject) => {
-        if (!prevProject) return null;
-        return { ...prevProject, current_stage: newStage };
-      });
       toast({
-        title: 'Success',
-        description: 'Project stage updated successfully',
+        title: 'Stage updated successfully',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+
+      fetchProjectAndPayments();
     } catch (error) {
-      console.error('Error updating project stage:', error);
+      console.error('Error updating stage:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update project stage',
+        title: 'Error updating stage',
+        description: error instanceof Error ? error.message : 'An error occurred',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
+    } finally {
+      setStageLoading(false);
     }
   };
 
@@ -488,45 +496,47 @@ const ProjectDetails = () => {
             <Table variant="simple" size="md">
               <Thead>
                 <Tr>
+                  <Th>Date</Th>
                   <Th>Payment Type</Th>
                   <Th isNumeric>Amount</Th>
-                  <Th>Payment Date</Th>
                   <Th>Time Elapsed</Th>
                   <Th>Actions</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                <Tr>
-                  <Td>Advance Payment</Td>
-                  <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
-                  <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : 'Not set'}</Td>
-                  <Td>{project.start_date ? getTimeElapsed(project.start_date) : 'N/A'}</Td>
-                  <Td>
-                    {hasReceiptAccess() && (
-                      <Button 
-                        size="sm" 
-                        colorScheme="teal" 
-                        onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date)}
-                        isDisabled={!hasReceiptAccess() || !project.start_date}
-                      >
-                        Download Receipt
-                      </Button>
-                    )}
-                  </Td>
-                </Tr>
-                {project.payment_history?.map(payment => (
+                {project.advance_payment > 0 && (
+                  <Tr>
+                    <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : new Date(project.created_at).toLocaleDateString()}</Td>
+                    <Td>Advance Payment</Td>
+                    <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
+                    <Td>{project.start_date ? getTimeElapsed(project.start_date, true) : getTimeElapsed(project.created_at, true)}</Td>
+                    <Td>
+                      {hasReceiptAccess() && (
+                        <Button
+                          size="sm"
+                          colorScheme="blue"
+                          onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date || project.created_at)}
+                          isDisabled={loading}
+                        >
+                          Download Receipt
+                        </Button>
+                      )}
+                    </Td>
+                  </Tr>
+                )}
+                {project.payment_history?.map((payment) => (
                   <Tr key={payment.id}>
+                    <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
                     <Td>Regular Payment</Td>
                     <Td isNumeric>₹{payment.amount.toLocaleString()}</Td>
-                    <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
                     <Td>{getTimeElapsed(payment.created_at)}</Td>
                     <Td>
                       {hasReceiptAccess() && (
-                        <Button 
-                          size="sm" 
-                          colorScheme="teal" 
+                        <Button
+                          size="sm"
+                          colorScheme="blue"
                           onClick={() => handleDownloadReceipt(payment.amount, payment.created_at)}
-                          isDisabled={!hasReceiptAccess() || !payment.created_at}
+                          isDisabled={loading}
                         >
                           Download Receipt
                         </Button>
@@ -556,15 +566,35 @@ const ProjectDetails = () => {
 
     setEditLoading(true);
     try {
+      // Define the type for the update data
+      type UpdateDataType = {
+        customer_name: string;
+        email: string;
+        phone: string;
+        address: string;
+        kwh: number;
+        loan_amount?: number;
+      };
+      
+      // Calculate new balance amount after loan amount update
+      let updateData: UpdateDataType = {
+        customer_name: customerFormData.customer_name,
+        email: customerFormData.email,
+        phone: customerFormData.phone,
+        address: customerFormData.address,
+        kwh: customerFormData.kwh
+      };
+      
+      // Only allow admin@axisogreen.in to update loan amount
+      if (user?.email === 'admin@axisogreen.in') {
+        const newLoanAmount = customerFormData.loan_amount;
+        
+        updateData.loan_amount = newLoanAmount;
+      }
+
       const { data, error } = await supabase
         .from('projects')
-        .update({
-          customer_name: customerFormData.customer_name,
-          email: customerFormData.email,
-          phone: customerFormData.phone,
-          address: customerFormData.address,
-          kwh: customerFormData.kwh
-        })
+        .update(updateData)
         .eq('id', id)
         .select();
 
@@ -572,14 +602,26 @@ const ProjectDetails = () => {
       
       // Update project data
       if (data && data[0]) {
-        setProject({
-          ...project,
-          customer_name: customerFormData.customer_name,
-          email: customerFormData.email,
-          phone: customerFormData.phone,
-          address: customerFormData.address,
-          kwh: customerFormData.kwh
-        });
+        if (user?.email === 'admin@axisogreen.in') {
+          setProject({
+            ...project,
+            customer_name: customerFormData.customer_name,
+            email: customerFormData.email,
+            phone: customerFormData.phone,
+            address: customerFormData.address,
+            kwh: customerFormData.kwh,
+            loan_amount: customerFormData.loan_amount
+          });
+        } else {
+          setProject({
+            ...project,
+            customer_name: customerFormData.customer_name,
+            email: customerFormData.email,
+            phone: customerFormData.phone,
+            address: customerFormData.address,
+            kwh: customerFormData.kwh
+          });
+        }
       }
 
       toast({
@@ -607,7 +649,12 @@ const ProjectDetails = () => {
 
   // Check if user has edit access
   const hasEditAccess = () => {
-    return isAdmin || user?.email === 'contact@axisogreen.in';
+    return isAdmin || user?.email === 'contact@axisogreen.in' || user?.email === 'dhanush@axisogreen.in';
+  };
+
+  // Check if user has loan edit access
+  const hasLoanEditAccess = () => {
+    return user?.email === 'admin@axisogreen.in';
   };
 
   return (
@@ -627,6 +674,12 @@ const ProjectDetails = () => {
                 <Text fontWeight="medium">Advance Payment:</Text>
                 <Text color="blue.500">₹{project.advance_payment.toLocaleString()}</Text>
               </HStack>
+              {project.loan_amount > 0 && (
+                <HStack justify="space-between" w="full">
+                  <Text fontWeight="medium">Loan Amount:</Text>
+                  <Text color="purple.500">₹{project.loan_amount.toLocaleString()}</Text>
+                </HStack>
+              )}
               <HStack justify="space-between" w="full">
                 <Text fontWeight="medium">Total Paid:</Text>
                 <Text color="green.500">₹{(project.advance_payment + (project.paid_amount || 0)).toLocaleString()}</Text>
@@ -635,7 +688,7 @@ const ProjectDetails = () => {
               <HStack justify="space-between" w="full">
                 <Text fontWeight="bold">Balance Amount:</Text>
                 <Text fontWeight="bold" color="red.500">
-                  ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))).toLocaleString()}
+                  ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))).toLocaleString()}
                 </Text>
               </HStack>
             </VStack>
@@ -749,6 +802,22 @@ const ProjectDetails = () => {
                   isDisabled={editLoading}
                 />
               </FormControl>
+              
+              <FormControl>
+                <FormLabel>Loan Amount</FormLabel>
+                <Input 
+                  name="loan_amount"
+                  type="number"
+                  value={customerFormData.loan_amount}
+                  onChange={handleCustomerFormChange}
+                  isDisabled={editLoading || !hasLoanEditAccess()}
+                />
+                {!hasLoanEditAccess() && (
+                  <Text fontSize="xs" color="red.500" mt={1}>
+                    Only admin@axisogreen.in can edit the loan amount
+                  </Text>
+                )}
+              </FormControl>
             </VStack>
           </ModalBody>
           <ModalFooter>
@@ -821,7 +890,7 @@ const ProjectDetails = () => {
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder="Enter payment amount"
-                  max={project.balance_amount}
+                  max={project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))}
                   min={0}
                   step="0.01"
                   isDisabled={paymentLoading}
@@ -831,13 +900,13 @@ const ProjectDetails = () => {
                   onClick={handlePayment}
                   isLoading={paymentLoading}
                   loadingText="Adding"
-                  isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > project.balance_amount || paymentLoading}
+                  isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > (project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))) || paymentLoading}
                 >
                   Add Payment
                 </Button>
               </HStack>
               <Text fontSize="sm" color="gray.500">
-                Maximum payment amount: ₹{project.balance_amount.toLocaleString()}
+                Maximum payment amount: ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))).toLocaleString()}
               </Text>
             </VStack>
           </CardBody>
