@@ -287,7 +287,7 @@ const Projects = () => {
         proposal_amount: parseFloat(newProject.proposal_amount),
         advance_payment: parseFloat(newProject.advance_payment),
         status: 'active',
-        current_stage: 'Advance payment done',
+        current_stage: 'Advance Payment Done',
         start_date: startDate,
         kwh: parseFloat(newProject.kwh),
       };

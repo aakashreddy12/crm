@@ -36,20 +36,22 @@ interface Project {
 
 // Group stages for better visualization
 const STAGE_GROUPS = [
-  { name: 'Initial Phase', stages: ['Advance payment done', 'Approvals to be received', 'Approvals Received/shared to customer'] },
-  { name: 'Procurement', stages: ['First payment collected/loan process started', 'Loan Approved', 'Structure ordered/panels ordered', 'Structure arrived/panels arrived', '2nd payment collected'] },
-  { name: 'Installation', stages: ['Installation pending', 'Installation Done'] },
-  { name: 'Net Metering', stages: ['Net meter Application(yet to start)', 'Net meter Application(If applicable)', 'Net Meter Received', 'Net Meter Installation completed'] },
-  { name: 'Completion', stages: ['Inspection pending', 'Approved Inspection', 'Subsisdy(in progress)', 'Subsidy disbursed', 'Handover of Docs', 'Final payment(done)/completed'] }
+  { name: 'Advance Payment', stages: ['Advance Payment Done', 'Advance Payment -- Approvals / First Payment'] },
+  { name: 'Approvals & Loan', stages: ['Approvals -- Loan Applications', 'Loan Started -- Loan Process', 'Loan Approved / First Payment Collected -- Material Order'] },
+  { name: 'Materials', stages: ['Materials Ordered -- Materials Deliver', 'Materials Delivered -- Installation'] },
+  { name: 'Installation', stages: ['Installation Done / Second Payment Done -- Net meter Application'] },
+  { name: 'Net Metering', stages: ['Net Meter Application -- Net Meter Installation', 'Net Meter Installed -- Inspection / Final Payment'] },
+  { name: 'Inspection & Finalization', stages: ['Approved Inspection -- Subsidy in Progress', 'Subsidy Disbursed -- Final payment', 'Final Payment Done'] }
 ];
 
 // Define colors for different stage groups
 const GROUP_COLORS = {
-  'Initial Phase': 'blue',
-  'Procurement': 'purple',
-  'Installation': 'orange',
+  'Advance Payment': 'blue',
+  'Approvals & Loan': 'purple',
+  'Materials': 'orange',
+  'Installation': 'pink',
   'Net Metering': 'teal',
-  'Completion': 'green'
+  'Inspection & Finalization': 'green'
 };
 
 const Reports = () => {
