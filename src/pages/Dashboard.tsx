@@ -121,13 +121,15 @@ const Dashboard = () => {
       if (error) throw error;
 
       if (projects) {
+        // Get unique customer names for total customers count
+        const uniqueCustomers = [...new Set(projects.map((p: Project) => p.customer_name))];
         const active = projects.filter((p: Project) => p.status === 'active');
         const completed = projects.filter((p: Project) => p.status === 'completed');
         const totalRevenue = projects.reduce((sum: number, p: Project) => sum + (p.proposal_amount || 0), 0);
         const totalKwh = projects.reduce((sum: number, p: Project) => sum + (p.kwh || 0), 0);
 
         setStats({
-          totalCustomers: projects.length,
+          totalCustomers: uniqueCustomers.length,
           activeProjects: active.length,
           completedProjects: completed.length,
           totalRevenue,
