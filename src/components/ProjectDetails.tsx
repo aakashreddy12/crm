@@ -129,7 +129,7 @@ const ProjectDetails = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchProjectAndPayments = async () => {
+  const fetchProjectAndPayments = useCallback(async () => {
     if (!id || !isAuthenticated) return;
 
     try {
@@ -162,7 +162,7 @@ const ProjectDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isAuthenticated, toast]);
 
   useEffect(() => {
     if (!isAuthenticated) {

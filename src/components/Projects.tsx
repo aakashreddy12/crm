@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -98,6 +98,7 @@ const Projects = () => {
     payment_mode: 'Cash',
     proposal_amount: '',
     advance_payment: '',
+    loan_amount: '',
     start_date: '',
     kwh: '',
   });
@@ -115,16 +116,7 @@ const Projects = () => {
   const [filterField, setFilterField] = useState<string>('');
   const [filterValue, setFilterValue] = useState<string>('');
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  // Apply filters whenever activeFilters changes
-  useEffect(() => {
-    applyFilters();
-  }, [activeFilters, allProjects]);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       let query = supabase
         .from('projects')
@@ -159,10 +151,14 @@ const Projects = () => {
         isClosable: true,
       });
     }
-  };
+  }, [toast]);
 
-  // Apply current filters to the project list
-  const applyFilters = () => {
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  // Apply filters whenever activeFilters changes
+  const applyFilters = useCallback(() => {
     if (activeFilters.length === 0) {
       setProjects(allProjects);
       return;
@@ -176,7 +172,11 @@ const Projects = () => {
     });
 
     setProjects(filteredProjects);
-  };
+  }, [activeFilters, allProjects]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   // Get available values for a field
   const getFieldOptions = (field: string): string[] => {
@@ -276,6 +276,10 @@ const Projects = () => {
         ? new Date(newProject.start_date).toISOString() 
         : new Date().toISOString();
         
+      const proposal = parseFloat(newProject.proposal_amount);
+      const advance = parseFloat(newProject.advance_payment);
+      const loan = parseFloat(newProject.loan_amount || '0');
+      
       const projectData = {
         name: newProject.name,
         customer_name: newProject.customer_name,
@@ -284,10 +288,12 @@ const Projects = () => {
         address: newProject.address,
         project_type: newProject.project_type,
         payment_mode: newProject.payment_mode,
-        proposal_amount: parseFloat(newProject.proposal_amount),
-        advance_payment: parseFloat(newProject.advance_payment),
+        proposal_amount: proposal,
+        advance_payment: advance,
+        loan_amount: loan,
+        paid_amount: 0,
         status: 'active',
-        current_stage: 'Advance Payment Done',
+        current_stage: 'Advance payment done',
         start_date: startDate,
         kwh: parseFloat(newProject.kwh),
       };
@@ -327,6 +333,7 @@ const Projects = () => {
         payment_mode: 'Cash',
         proposal_amount: '',
         advance_payment: '',
+        loan_amount: '',
         start_date: '',
         kwh: '',
       });
@@ -737,6 +744,17 @@ const Projects = () => {
                   name="advance_payment"
                   type="number"
                   value={newProject.advance_payment}
+                  onChange={handleInputChange}
+                  max={newProject.proposal_amount}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Loan Amount</FormLabel>
+                <Input
+                  name="loan_amount"
+                  type="number"
+                  value={newProject.loan_amount}
                   onChange={handleInputChange}
                   max={newProject.proposal_amount}
                 />
