@@ -86,6 +86,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             Reports
           </ChakraLink>
+          <ChakraLink
+            as={RouterLink}
+            to="/service-tickets"
+            mr="4"
+            color={location.pathname === '/service-tickets' ? 'green.600' : 'gray.600'}
+            fontWeight={location.pathname === '/service-tickets' ? 'bold' : 'normal'}
+          >
+            Service Tickets
+          </ChakraLink>
           
           {/* Show Finance link only for finance users */}
           {isFinance && (
