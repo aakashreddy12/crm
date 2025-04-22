@@ -100,6 +100,8 @@ const ServiceTickets = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      // Set the tickets state with the fetched data
       setTickets(data || []);
     } catch (error: any) {
       console.error('Error fetching service tickets:', error);
@@ -146,13 +148,20 @@ const ServiceTickets = () => {
     }
   }, [toast]);
 
-  // Load data on component mount
+  // Load data on component mount and when authenticated state changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchServiceTickets();
       fetchCustomers();
     }
   }, [isAuthenticated, fetchServiceTickets, fetchCustomers]);
+
+  // Additional cleanup effect for when dialog is closed without confirmation
+  useEffect(() => {
+    if (!isDeleteOpen) {
+      setTicketToDelete(null);
+    }
+  }, [isDeleteOpen]);
 
   // Handle customer selection change
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -328,6 +337,9 @@ const ServiceTickets = () => {
       if (viewTicket && viewTicket.id === ticketToDelete.id) {
         onViewClose();
       }
+      
+      // Clear the ticket to delete from state
+      setTicketToDelete(null);
     } catch (error: any) {
       console.error('Error deleting service ticket:', error);
       toast({
