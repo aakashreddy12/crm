@@ -35,9 +35,15 @@ import {
   HStack,
   Text,
   IconButton,
-  Tooltip
+  Tooltip,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay
 } from '@chakra-ui/react';
-import { AddIcon, CheckIcon, ViewIcon } from '@chakra-ui/icons';
+import { AddIcon, CheckIcon, ViewIcon, DeleteIcon } from '@chakra-ui/icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
@@ -76,10 +82,13 @@ const ServiceTickets = () => {
     description: ''
   });
   const [viewTicket, setViewTicket] = useState<ServiceTicket | null>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<ServiceTicket | null>(null);
   const { isOpen: isNewOpen, onOpen: onNewOpen, onClose: onNewClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isAuthenticated } = useAuth();
   const toast = useToast();
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
 
   // Fetch all service tickets
   const fetchServiceTickets = useCallback(async () => {
@@ -283,6 +292,54 @@ const ServiceTickets = () => {
     }
   };
 
+  // Open delete confirmation dialog
+  const handleDeleteClick = (ticket: ServiceTicket) => {
+    setTicketToDelete(ticket);
+    onDeleteOpen();
+  };
+
+  // Handle delete ticket
+  const handleDeleteConfirm = async () => {
+    if (!ticketToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('service_tickets')
+        .delete()
+        .eq('id', ticketToDelete.id);
+
+      if (error) throw error;
+
+      // Remove from state
+      setTickets(prev => prev.filter(ticket => ticket.id !== ticketToDelete.id));
+      
+      toast({
+        title: 'Success',
+        description: 'Service ticket deleted successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      // Close confirmation dialog
+      onDeleteClose();
+      
+      // If the delete was triggered from view modal, close that too
+      if (viewTicket && viewTicket.id === ticketToDelete.id) {
+        onViewClose();
+      }
+    } catch (error: any) {
+      console.error('Error deleting service ticket:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete service ticket',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   // View ticket details
   const handleViewTicket = (ticket: ServiceTicket) => {
     setViewTicket(ticket);
@@ -383,6 +440,15 @@ const ServiceTickets = () => {
                             />
                           </Tooltip>
                         )}
+                        <Tooltip label="Delete Ticket">
+                          <IconButton
+                            aria-label="Delete ticket"
+                            icon={<DeleteIcon />}
+                            size="sm"
+                            colorScheme="red"
+                            onClick={() => handleDeleteClick(ticket)}
+                          />
+                        </Tooltip>
                       </HStack>
                     </Td>
                   </Tr>
@@ -525,24 +591,68 @@ const ServiceTickets = () => {
             )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" onClick={onViewClose}>
-              Close
-            </Button>
-            {viewTicket && viewTicket.status !== 'completed' && (
-              <Button
-                colorScheme="green"
-                ml={3}
-                onClick={() => {
-                  handleMarkComplete(viewTicket.id);
-                  onViewClose();
-                }}
-              >
-                Mark as Complete
+            <HStack spacing={2}>
+              {viewTicket && (
+                <Button
+                  colorScheme="red"
+                  onClick={() => handleDeleteClick(viewTicket)}
+                >
+                  Delete
+                </Button>
+              )}
+              <Button variant="ghost" onClick={onViewClose}>
+                Close
               </Button>
-            )}
+              {viewTicket && viewTicket.status !== 'completed' && (
+                <Button
+                  colorScheme="green"
+                  onClick={() => {
+                    handleMarkComplete(viewTicket.id);
+                    onViewClose();
+                  }}
+                >
+                  Mark as Complete
+                </Button>
+              )}
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isDeleteOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onDeleteClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Service Ticket
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to delete this service ticket?
+              {ticketToDelete && (
+                <Box mt={2}>
+                  <Text fontWeight="bold">Customer: {ticketToDelete.customer_name}</Text>
+                  <Text fontWeight="bold">Status: {ticketToDelete.status}</Text>
+                </Box>
+              )}
+              This action cannot be undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onDeleteClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={handleDeleteConfirm} ml={3}>
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };
