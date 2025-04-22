@@ -69,6 +69,29 @@ interface Customer {
   address: string;
 }
 
+// Helper function to get deleted tickets from localStorage
+const getDeletedTicketIds = (): string[] => {
+  try {
+    const deletedTickets = localStorage.getItem('deletedServiceTickets');
+    return deletedTickets ? JSON.parse(deletedTickets) : [];
+  } catch (error) {
+    console.error('Error getting deleted tickets from localStorage', error);
+    return [];
+  }
+};
+
+// Helper function to add a deleted ticket to localStorage
+const addDeletedTicketId = (id: string): void => {
+  try {
+    const currentDeleted = getDeletedTicketIds();
+    if (!currentDeleted.includes(id)) {
+      localStorage.setItem('deletedServiceTickets', JSON.stringify([...currentDeleted, id]));
+    }
+  } catch (error) {
+    console.error('Error adding deleted ticket to localStorage', error);
+  }
+};
+
 const ServiceTickets = () => {
   const [tickets, setTickets] = useState<ServiceTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,10 +113,14 @@ const ServiceTickets = () => {
   const toast = useToast();
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
-  // Fetch all service tickets
+  // Fetch all service tickets with filter for deleted tickets
   const fetchServiceTickets = useCallback(async () => {
     try {
       setIsLoading(true);
+      
+      // Get list of deleted ticket IDs from localStorage
+      const deletedIds = getDeletedTicketIds();
+      
       const { data, error } = await supabase
         .from('service_tickets')
         .select('*')
@@ -101,8 +128,11 @@ const ServiceTickets = () => {
 
       if (error) throw error;
       
-      // Set the tickets state with the fetched data
-      setTickets(data || []);
+      // Filter out any tickets that are in our deleted IDs list
+      const filteredData = data?.filter(ticket => !deletedIds.includes(ticket.id)) || [];
+      
+      // Set the tickets state with the filtered data
+      setTickets(filteredData);
     } catch (error: any) {
       console.error('Error fetching service tickets:', error);
       toast({
@@ -307,7 +337,7 @@ const ServiceTickets = () => {
     onDeleteOpen();
   };
 
-  // Handle delete ticket
+  // Handle delete ticket with localStorage tracking
   const handleDeleteConfirm = async () => {
     if (!ticketToDelete) return;
     
@@ -318,6 +348,9 @@ const ServiceTickets = () => {
         .eq('id', ticketToDelete.id);
 
       if (error) throw error;
+
+      // Add the deleted ticket ID to localStorage
+      addDeletedTicketId(ticketToDelete.id);
 
       // Remove from state
       setTickets(prev => prev.filter(ticket => ticket.id !== ticketToDelete.id));
