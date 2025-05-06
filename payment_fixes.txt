@@ -1,0 +1,44 @@
+# Payment System Fixes
+
+This update includes two critical fixes for the payment system:
+
+## 1. Fix for Deleted Payments Reappearing After Page Refresh
+
+### Issue:
+- Deleted payments were reappearing in the payment history after the page was refreshed.
+
+### Solution:
+- Modified the `handleDeletePayment` function to properly fetch fresh data from the database after a payment is deleted.
+- Ensured proper database updates by implementing a three-step process: 
+  1. Get payment amount
+  2. Delete payment record
+  3. Update project's paid amount
+  4. Fetch the latest data instead of relying on local state
+
+### Affected Files:
+- src/components/ProjectDetails.tsx
+
+## 2. Incorrect Timestamp Display
+
+### Issue:
+- Timestamps for payments were displaying incorrectly.
+- Time elapsed calculations were not properly accounting for timezone differences.
+
+### Solution:
+- Updated the `getTimeElapsed` function to correctly handle timezone offsets.
+- Modified the payment history table to use payment_date instead of created_at for time elapsed calculations.
+- Improved timestamp display logic with better fallbacks and proper handling of edge cases.
+- Added "Just now" display for very recent payments (less than a minute ago).
+
+### Affected Files:
+- src/components/ProjectDetails.tsx
+
+## 3. Payment Processing Improvements
+
+### Additional Improvements:
+- Enhanced the `handlePayment` function to update the database directly and then fetch fresh data, rather than updating local state.
+- Ensured consistent user experience by preserving payment date and mode inputs between payments.
+- Improved payment receipt generation by properly passing the payment mode.
+
+### Deployment:
+- These changes have been deployed to the production environment on [date]. 
