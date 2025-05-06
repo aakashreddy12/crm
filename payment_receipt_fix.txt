@@ -1,0 +1,22 @@
+# Payment Receipt Fix
+
+## Issue Fixed
+Fixed the payment receipt to correctly display the selected payment mode rather than showing a hardcoded "Cash/UPI" text.
+
+## Solution
+Updated `PaymentReceipt.tsx` to use the `paymentMode` prop that's passed from the parent component instead of a hardcoded value.
+
+## Files Changed
+- `src/components/PaymentReceipt.tsx`: Changed hardcoded "Cash/UPI" to use the `paymentMode` prop
+
+## Important Notes
+1. The payment receipt now correctly shows whatever payment mode is selected when adding a payment (Cash, UPI, or Loan)
+2. The advance payment is still displayed as "Advance Payment" in the payment history table
+3. The delete payment functionality remains available only to admin@axisogreen.in
+
+## Deployment Steps Taken
+1. Fixed the code in PaymentReceipt.tsx
+2. Built the project with `npm run build`
+3. Copied the new build to crm folder
+4. Created a new build.zip file
+5. Added, committed, and pushed changes to the repository 

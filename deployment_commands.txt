@@ -1,0 +1,29 @@
+# Deployment Commands for CRM Application
+
+# 1. Build the application
+cd /path/to/updatedcrm  # Change to your project root
+npm run build
+
+# 2. Copy build files to crm folder
+rm -r crm/build  # Remove old build folder
+cp -r build crm/  # Copy new build folder
+
+# 3. Create build.zip file in crm folder
+cd crm
+Compress-Archive -Path build -DestinationPath build.zip -Force  # For PowerShell
+# OR for bash/Linux: zip -r build.zip build
+
+# 4. Git commands to commit and push
+git add build build.zip
+git commit -m "Update deployment files"
+git push origin main
+
+# 5. Database update (if needed)
+# Run the SQL in Supabase SQL Editor:
+# For balance amount calculation update:
+# Run update_balance_amount_calculation_v2.sql
+
+# Notes:
+# - Replace /path/to/updatedcrm with your actual project path
+# - For Windows PowerShell, the commands are as shown
+# - For Linux/Mac, replace Compress-Archive with zip -r build.zip build 

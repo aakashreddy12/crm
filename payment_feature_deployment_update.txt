@@ -1,0 +1,51 @@
+# Payment Feature Deployment Update
+
+## 1. New Features Added
+
+1. Payment receipts now correctly use the selected payment mode
+2. Added ability for admin@axisogreen.in to delete payments
+3. Advance payment now shows the project's payment mode in the history table
+
+## 2. Database Update
+No additional database changes required beyond the previous update:
+
+```sql
+-- Add payment_mode and payment_date columns to the payment_history table
+ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS payment_mode TEXT CHECK (payment_mode IN ('Cash', 'UPI', 'Loan')) DEFAULT 'Cash';
+ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS payment_date DATE DEFAULT CURRENT_DATE;
+```
+
+## 3. Build and Deploy
+
+### Build the project
+```
+cd /path/to/updatedcrm
+npm run build
+```
+
+### Deploy to crm folder
+```
+rm -r crm/build
+cp -r build crm/
+cd crm
+```
+
+### Create a zip file (PowerShell)
+```
+Compress-Archive -Path build -DestinationPath build.zip -Force
+```
+
+### Git commands to commit and push
+```
+git add build build.zip payment_feature_deployment_update.txt
+git commit -m "Add payment deletion and fix receipt payment mode"
+git push origin main
+```
+
+## 4. Security Notes
+
+- Only admin@axisogreen.in can delete payments
+- When payments are deleted:
+  - The payment record is removed from the payment_history table
+  - The project's paid_amount is automatically updated
+  - A confirmation prompt is shown before deletion to prevent accidental removal 

@@ -1,0 +1,50 @@
+# Payment Feature Deployment Steps
+
+## 1. Database Update
+Run the following SQL in your Supabase SQL Editor:
+
+```sql
+-- Add payment_mode and payment_date columns to the payment_history table
+ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS payment_mode TEXT CHECK (payment_mode IN ('Cash', 'UPI', 'Loan')) DEFAULT 'Cash';
+ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS payment_date DATE DEFAULT CURRENT_DATE;
+
+-- Add a comment explaining the changes
+COMMENT ON COLUMN payment_history.payment_mode IS 'Payment mode: Cash, UPI, or Loan';
+COMMENT ON COLUMN payment_history.payment_date IS 'Date when the payment was made (can be different from created_at)';
+```
+
+## 2. Build and Deploy
+
+### Build the project
+```
+cd /path/to/updatedcrm
+npm run build
+```
+
+### Deploy to crm folder
+```
+rm -r crm/build
+cp -r build crm/
+cd crm
+```
+
+### Create a zip file (PowerShell)
+```
+Compress-Archive -Path build -DestinationPath build.zip -Force
+```
+
+### Git commands to commit and push
+```
+git add build build.zip update_payment_history_table.sql payment_feature_deployment.txt
+git commit -m "Add payment date and mode selection features"
+git push origin main
+```
+
+## 3. Feature Changes Summary
+
+1. Added payment_mode and payment_date fields to payment_history table
+2. Updated the payment form in ProjectDetails.tsx to include:
+   - Date selection input
+   - Payment mode dropdown (Cash, UPI, Loan)
+3. Payment receipts now show the selected payment date and mode
+4. Payment history table displays payment mode and user-selected date 
