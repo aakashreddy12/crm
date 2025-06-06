@@ -34,6 +34,7 @@ import {
   ModalCloseButton,
   Tooltip,
   IconButton,
+  Select,
 } from '@chakra-ui/react';
 import { supabase } from '../lib/supabase';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -46,6 +47,8 @@ interface PaymentHistory {
   id: string;
   amount: number;
   created_at: string;
+  payment_mode?: string;
+  payment_date?: string;
 }
 
 interface Project {
@@ -71,9 +74,17 @@ interface Project {
 }
 
 const getTimeElapsed = (timestamp: string, isAdvancePayment: boolean = false) => {
+  if (!timestamp) return 'N/A';
+  
   const now = new Date();
   const paymentDate = new Date(timestamp);
-  const diffInMillis = now.getTime() - paymentDate.getTime();
+  
+  // Check if the date is valid
+  if (isNaN(paymentDate.getTime())) return 'Invalid date';
+  
+  // Handle timezone offset correctly
+  const utcPaymentDate = new Date(paymentDate.getTime() + paymentDate.getTimezoneOffset() * 60000);
+  const diffInMillis = now.getTime() - utcPaymentDate.getTime();
   
   const days = Math.floor(diffInMillis / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diffInMillis % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -85,7 +96,10 @@ const getTimeElapsed = (timestamp: string, isAdvancePayment: boolean = false) =>
   if (hours > 0) {
     return `${hours}h ${minutes}m ago`;
   }
-  return `${minutes}m ago`;
+  if (minutes > 0) {
+    return `${minutes}m ago`;
+  }
+  return 'Just now';
 };
 
 const ProjectDetails = () => {
@@ -95,6 +109,14 @@ const ProjectDetails = () => {
   const [loading, setLoading] = useState(true);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const savedDate = sessionStorage.getItem(`payment_date_${id}`);
+    return savedDate || new Date().toISOString().split('T')[0];
+  });
+  const [paymentMode, setPaymentMode] = useState(() => {
+    const savedMode = sessionStorage.getItem(`payment_mode_${id}`);
+    return savedMode || 'Cash';
+  });
   const { isAdmin, isAuthenticated, user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -116,8 +138,16 @@ const ProjectDetails = () => {
     phone: '',
     address: '',
     kwh: 0,
-    loan_amount: 0
+    loan_amount: 0,
+    start_date: ''
   });
+
+  // Start date edit modal state
+  const { 
+    isOpen: isStartDateModalOpen, 
+    onOpen: onStartDateModalOpen, 
+    onClose: onStartDateModalClose 
+  } = useDisclosure();
 
   // Add useEffect for timestamp updates
   useEffect(() => {
@@ -141,7 +171,9 @@ const ProjectDetails = () => {
           payment_history (
             id,
             amount,
-            created_at
+            created_at,
+            payment_mode,
+            payment_date
           )
         `)
         .eq('id', id)
@@ -182,7 +214,8 @@ const ProjectDetails = () => {
         phone: project.phone || '',
         address: project.address || '',
         kwh: project.kwh || 0,
-        loan_amount: project.loan_amount || 0
+        loan_amount: project.loan_amount || 0,
+        start_date: project.start_date || ''
       });
     }
   }, [project, isEditOpen]);
@@ -196,7 +229,8 @@ const ProjectDetails = () => {
         phone: project.phone || '',
         address: project.address || '',
         kwh: project.kwh || 0,
-        loan_amount: project.loan_amount || 0
+        loan_amount: project.loan_amount || 0,
+        start_date: project.start_date || ''
       });
     }
     onEditOpen();
@@ -209,6 +243,19 @@ const ProjectDetails = () => {
       ...prev,
       [name]: (name === 'kwh' || name === 'loan_amount') ? (value === '' ? 0 : parseFloat(value) || 0) : value
     }));
+  };
+
+  // Add handler to update session storage when values change
+  const handlePaymentDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setPaymentDate(newDate);
+    sessionStorage.setItem(`payment_date_${id}`, newDate);
+  };
+  
+  const handlePaymentModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newMode = e.target.value;
+    setPaymentMode(newMode);
+    sessionStorage.setItem(`payment_mode_${id}`, newMode);
   };
 
   if (!isAuthenticated) {
@@ -323,7 +370,7 @@ const ProjectDetails = () => {
     return isAdmin || (user?.email === 'contact@axisogreen.in') || (user?.email === 'dhanush@axisogreen.in');
   };
 
-  const handleDownloadReceipt = (amount: number, date: string) => {
+  const handleDownloadReceipt = (amount: number, date: string, mode: string = 'Cash', isAdvance: boolean = false) => {
     const container = document.createElement('div');
     const root = createRoot(container);
     
@@ -336,7 +383,7 @@ const ProjectDetails = () => {
         date={formattedDate}
         amount={amount}
         receivedFrom={project.customer_name}
-        paymentMode={project.payment_mode || 'Bank Transfer'}
+        paymentMode={isAdvance ? 'Cash/UPI' : (mode || project.payment_mode || 'Cash')}
         placeOfSupply="Telangana"
         customerAddress={project.address}
       />
@@ -360,11 +407,11 @@ const ProjectDetails = () => {
           duration: 5000,
           isClosable: true,
         });
+        setPaymentLoading(false);
         return;
       }
 
-      const actualBalanceAmount = project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0));
-      
+      const actualBalanceAmount = project.proposal_amount - (project.advance_payment + (project.paid_amount || 0));
       if (amount > actualBalanceAmount) {
         toast({
           title: 'Invalid Amount',
@@ -373,26 +420,35 @@ const ProjectDetails = () => {
           duration: 5000,
           isClosable: true,
         });
+        setPaymentLoading(false);
         return;
       }
 
+      // Create the payment with complete information
       const { data: paymentData, error } = await supabase
         .from('payment_history')
-        .insert([{ project_id: project.id, amount }])
+        .insert([{ 
+          project_id: project.id, 
+          amount,
+          payment_mode: paymentMode,
+          payment_date: paymentDate
+        }])
         .select();
 
       if (error) throw error;
 
-      // Update the project's payment history in state
-      if (paymentData && project) {
-        // Remove the explicit balance calculation and setting
-        setProject({
-          ...project,
-          payment_history: [...(project.payment_history || []), paymentData[0]],
-          paid_amount: (project.paid_amount || 0) + amount
-          // balance_amount is a generated column, so we don't set it directly
-        });
-      }
+      // Update the project in Supabase with new paid_amount
+      const newPaidAmount = (project.paid_amount || 0) + amount;
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ 
+          paid_amount: newPaidAmount 
+        })
+        .eq('id', project.id);
+      if (updateError) throw updateError;
+
+      // Force a fresh data fetch to ensure UI consistency
+      await fetchProjectAndPayments();
 
       toast({
         title: 'Success',
@@ -403,6 +459,7 @@ const ProjectDetails = () => {
       });
 
       setPaymentAmount('');
+      // Don't reset payment date and mode here, preserving for user convenience
     } catch (error) {
       console.error('Error recording payment:', error);
       toast({
@@ -417,516 +474,235 @@ const ProjectDetails = () => {
     }
   };
 
-  const handleStageChange = async (newStage: string) => {
-    try {
-      setStageLoading(true);
-      const { error } = await supabase
-        .from('projects')
-        .update({ 
-          current_stage: newStage,
-          status: newStage === 'Final Payment Done' ? 'completed' : 'active' // Update status to completed if final stage
-        })
-        .eq('id', id);
+  // Main component return
+  // Helper: Can the user delete payments?
+const hasDeleteAccess = () => {
+  return user?.email === 'admin@axisogreen.in';
+};
 
-      if (error) throw error;
+// Helper: Delete payment
+const handleDeletePayment = async (paymentId: string) => {
+  if (!window.confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
+    return;
+  }
+  try {
+    setLoading(true);
+    // First, get the payment details to calculate the amount to subtract
+    const { data: paymentData, error: fetchError } = await supabase
+      .from('payment_history')
+      .select('amount')
+      .eq('id', paymentId)
+      .single();
+    if (fetchError) throw fetchError;
+    const amountToRemove = paymentData?.amount || 0;
+    // Delete the payment
+    const { error: deleteError } = await supabase
+      .from('payment_history')
+      .delete()
+      .match({ id: paymentId });
+    if (deleteError) throw deleteError;
+    // Update the project's paid_amount
+    const newPaidAmount = Math.max(0, (project?.paid_amount || 0) - amountToRemove);
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ paid_amount: newPaidAmount })
+      .eq('id', project?.id);
+    if (updateError) throw updateError;
+    await fetchProjectAndPayments();
+    toast({
+      title: 'Payment Deleted',
+      description: 'The payment has been deleted successfully',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  } catch (error) {
+    console.error('Error deleting payment:', error);
+    toast({
+      title: 'Error',
+      description: 'Failed to delete payment',
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
-      toast({
-        title: 'Stage updated successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      fetchProjectAndPayments();
-    } catch (error) {
-      console.error('Error updating stage:', error);
-      toast({
-        title: 'Error updating stage',
-        description: error instanceof Error ? error.message : 'An error occurred',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setStageLoading(false);
-    }
-  };
-
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case 'Advance Payment Done':
-        return 'bg-green-100 text-green-800';
-      case 'Advance Payment -- Approvals / First Payment':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Approvals -- Loan Applications':
-        return 'bg-blue-100 text-blue-800';
-      case 'Loan Started -- Loan Process':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'Loan Approved / First Payment Collected -- Material Order':
-        return 'bg-purple-100 text-purple-800';
-      case 'Materials Ordered -- Materials Deliver':
-        return 'bg-pink-100 text-pink-800';
-      case 'Materials Delivered -- Installation':
-        return 'bg-red-100 text-red-800';
-      case 'Installation Done / Second Payment Done -- Net meter Application':
-        return 'bg-orange-100 text-orange-800';
-      case 'Net Meter Application -- Net Meter Installation':
-        return 'bg-amber-100 text-amber-800';
-      case 'Net Meter Installed -- Inspection / Final Payment':
-        return 'bg-lime-100 text-lime-800';
-      case 'Approved Inspection -- Subsidy in Progress':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'Subsidy Disbursed -- Final payment':
-        return 'bg-teal-100 text-teal-800';
-      case 'Final Payment Done':
-        return 'bg-cyan-100 text-cyan-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const renderPaymentHistory = () => {
-    return (
-      <Card mt={8}>
-        <CardHeader>
-          <Text fontSize="2xl" fontWeight="bold">Payment History</Text>
-        </CardHeader>
-        <CardBody>
-          <TableContainer>
-            <Table variant="simple" size="md">
-              <Thead>
-                <Tr>
-                  <Th>Date</Th>
-                  <Th>Payment Type</Th>
-                  <Th isNumeric>Amount</Th>
-                  <Th>Time Elapsed</Th>
-                  <Th>Actions</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {project.advance_payment > 0 && (
-                  <Tr>
-                    <Td>{project.start_date ? new Date(project.start_date).toLocaleDateString() : new Date(project.created_at).toLocaleDateString()}</Td>
-                    <Td>Advance Payment</Td>
-                    <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
-                    <Td>{project.start_date ? getTimeElapsed(project.start_date, true) : getTimeElapsed(project.created_at, true)}</Td>
-                    <Td>
-                      {hasReceiptAccess() && (
-                        <Button
-                          size="sm"
-                          colorScheme="blue"
-                          onClick={() => handleDownloadReceipt(project.advance_payment, project.start_date || project.created_at)}
-                          isDisabled={loading}
-                        >
-                          Download Receipt
-                        </Button>
-                      )}
-                    </Td>
-                  </Tr>
-                )}
-                {project.payment_history?.map((payment) => (
-                  <Tr key={payment.id}>
-                    <Td>{new Date(payment.created_at).toLocaleDateString()}</Td>
-                    <Td>Regular Payment</Td>
-                    <Td isNumeric>₹{payment.amount.toLocaleString()}</Td>
-                    <Td>{getTimeElapsed(payment.created_at)}</Td>
-                    <Td>
-                      {hasReceiptAccess() && (
-                        <Button
-                          size="sm"
-                          colorScheme="blue"
-                          onClick={() => handleDownloadReceipt(payment.amount, payment.created_at)}
-                          isDisabled={loading}
-                        >
-                          Download Receipt
-                        </Button>
-                      )}
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </CardBody>
-      </Card>
-    );
-  };
-
-  const currentStageIndex = PROJECT_STAGES.indexOf(project.current_stage);
-  const progress = ((currentStageIndex + 1) / PROJECT_STAGES.length) * 100;
-
-  // Add function to check if user can add payments
-  const canAddPayment = () => {
-    return isAdmin && user?.email !== 'contact@axisogreen.in';
-  };
-
-  // Handle customer details update
-  const handleCustomerUpdate = async () => {
-    if (!project || !id) return;
-
-    setEditLoading(true);
-    try {
-      // Define the type for the update data
-      type UpdateDataType = {
-        customer_name: string;
-        email: string;
-        phone: string;
-        address: string;
-        kwh: number;
-        loan_amount?: number;
-      };
-      
-      // Calculate new balance amount after loan amount update
-      let updateData: UpdateDataType = {
-        customer_name: customerFormData.customer_name,
-        email: customerFormData.email,
-        phone: customerFormData.phone,
-        address: customerFormData.address,
-        kwh: customerFormData.kwh
-      };
-      
-      // Only allow admin@axisogreen.in to update loan amount
-      if (user?.email === 'admin@axisogreen.in') {
-        const newLoanAmount = customerFormData.loan_amount;
-        
-        updateData.loan_amount = newLoanAmount;
-      }
-
-      const { data, error } = await supabase
-        .from('projects')
-        .update(updateData)
-        .eq('id', id)
-        .select();
-
-      if (error) throw error;
-      
-      // Update project data
-      if (data && data[0]) {
-        if (user?.email === 'admin@axisogreen.in') {
-          setProject({
-            ...project,
-            customer_name: customerFormData.customer_name,
-            email: customerFormData.email,
-            phone: customerFormData.phone,
-            address: customerFormData.address,
-            kwh: customerFormData.kwh,
-            loan_amount: customerFormData.loan_amount
-          });
-        } else {
-          setProject({
-            ...project,
-            customer_name: customerFormData.customer_name,
-            email: customerFormData.email,
-            phone: customerFormData.phone,
-            address: customerFormData.address,
-            kwh: customerFormData.kwh
-          });
-        }
-      }
-
-      toast({
-        title: 'Customer Updated',
-        description: 'Customer details have been updated successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      
-      onEditClose();
-    } catch (error) {
-      console.error('Error updating customer:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update customer details',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    } finally {
-      setEditLoading(false);
-    }
-  };
-
-  // Check if user has edit access
-  const hasEditAccess = () => {
-    return isAdmin || user?.email === 'contact@axisogreen.in' || user?.email === 'dhanush@axisogreen.in';
-  };
-
-  // Check if user has loan edit access
-  const hasLoanEditAccess = () => {
-    return user?.email === 'admin@axisogreen.in';
-  };
-
+// Render payment history
+const renderPaymentHistory = () => {
+  if (!project) return null;
   return (
-    <Box p={6} maxW="1200px" mx="auto">
-      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
-        <Card>
-          <CardHeader>
-            <Text fontSize="2xl" fontWeight="bold">{project.name}</Text>
-          </CardHeader>
-          <CardBody>
-            <VStack align="start" spacing={4}>
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Total Amount:</Text>
-                <Text>₹{project.proposal_amount.toLocaleString()}</Text>
-              </HStack>
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Advance Payment:</Text>
-                <Text color="blue.500">₹{project.advance_payment.toLocaleString()}</Text>
-              </HStack>
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Loan Amount:</Text>
-                <HStack>
-                  <Text color="purple.500">₹{project.loan_amount.toLocaleString()}</Text>
-                  {hasLoanEditAccess() && (
-                    <Tooltip label="Edit Loan Amount">
-                      <IconButton
-                        aria-label="Edit loan amount"
-                        icon={<EditIcon />}
-                        size="xs"
-                        colorScheme="purple"
-                        onClick={handleEditOpen}
-                      />
-                    </Tooltip>
-                  )}
-                </HStack>
-              </HStack>
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Total Paid:</Text>
-                <Text color="green.500">₹{(project.advance_payment + (project.paid_amount || 0)).toLocaleString()}</Text>
-              </HStack>
-              <Divider />
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="bold">Balance Amount:</Text>
-                <Text fontWeight="bold" color="red.500">
-                  ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))).toLocaleString()}
-                </Text>
-              </HStack>
-            </VStack>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <HStack justify="space-between">
-              <Text fontSize="2xl" fontWeight="bold">Customer Details</Text>
-              {hasEditAccess() && (
-                <Tooltip label="Edit Customer Details">
-                  <IconButton
-                    aria-label="Edit customer details"
-                    icon={<EditIcon />}
-                    size="sm"
-                    colorScheme="blue"
-                    onClick={handleEditOpen}
-                  />
-                </Tooltip>
+    <Card mt={8}>
+      <CardHeader>
+        <Text fontSize="2xl" fontWeight="bold">Payment History</Text>
+      </CardHeader>
+      <CardBody>
+        <TableContainer>
+          <Table variant="simple" size="md">
+            <Thead>
+              <Tr>
+                <Th>Date</Th>
+                <Th>Payment Type</Th>
+                <Th isNumeric>Amount</Th>
+                <Th>Time Elapsed</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {project.advance_payment > 0 && (
+                <Tr>
+                  <Td>
+                    {project.start_date
+                      ? new Date(project.start_date).toLocaleDateString()
+                      : project.created_at
+                        ? new Date(project.created_at).toLocaleDateString()
+                        : 'N/A'}
+                  </Td>
+                  <Td>Advance Payment</Td>
+                  <Td isNumeric>₹{project.advance_payment.toLocaleString()}</Td>
+                  <Td>
+                    {project.start_date
+                      ? getTimeElapsed(project.start_date, true)
+                      : project.created_at
+                        ? getTimeElapsed(project.created_at, true)
+                        : 'N/A'}
+                  </Td>
+                  <Td>
+                    {hasReceiptAccess() && (
+                      <Button
+                        size="sm"
+                        colorScheme="blue"
+                        onClick={() => handleDownloadReceipt(
+                          project.advance_payment,
+                          project.start_date || project.created_at,
+                          'Cash/UPI',
+                          true
+                        )}
+                        isDisabled={loading}
+                      >
+                        Download Receipt
+                      </Button>
+                    )}
+                  </Td>
+                </Tr>
               )}
-            </HStack>
-          </CardHeader>
-          <CardBody>
-            <VStack align="start" spacing={4} width="full">
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Customer Name:</Text>
-                <Text>{project.customer_name}</Text>
-              </HStack>
-              <Divider />
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Phone Number:</Text>
-                <Text>{project.phone}</Text>
-              </HStack>
-              <Divider />
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Email:</Text>
-                <Text>{project.email}</Text>
-              </HStack>
-              <Divider />
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">Address:</Text>
-                <Text>{project.address}</Text>
-              </HStack>
-              <Divider />
-              <HStack justify="space-between" w="full">
-                <Text fontWeight="medium">KWH:</Text>
-                <Text>{project.kwh || 'N/A'}</Text>
-              </HStack>
-            </VStack>
-          </CardBody>
-        </Card>
-      </SimpleGrid>
+              {project.payment_history?.map((payment: any) => (
+                <Tr key={payment.id}>
+                  <Td>
+                    {payment.payment_date
+                      ? new Date(payment.payment_date).toLocaleDateString()
+                      : payment.created_at
+                        ? new Date(payment.created_at).toLocaleDateString()
+                        : 'N/A'}
+                  </Td>
+                  <Td>{payment.payment_mode || 'Cash'}</Td>
+                  <Td isNumeric>₹{payment.amount.toLocaleString()}</Td>
+                  <Td>{payment.payment_date ? getTimeElapsed(payment.payment_date) : payment.created_at ? getTimeElapsed(payment.created_at) : 'N/A'}</Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      {hasReceiptAccess() && (
+                        <Button
+                          size="sm"
+                          colorScheme="blue"
+                          onClick={() => handleDownloadReceipt(
+                            payment.amount,
+                            payment.payment_date || payment.created_at,
+                            payment.payment_mode || 'Cash',
+                            false
+                          )}
+                          isDisabled={loading}
+                        >
+                          Download Receipt
+                        </Button>
+                      )}
+                      {hasDeleteAccess() && (
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          onClick={() => handleDeletePayment(payment.id)}
+                          isDisabled={loading}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </CardBody>
+    </Card>
+  );
+};
 
-      {/* Customer Edit Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Edit Customer Details</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4}>
-              <FormControl>
-                <FormLabel>Customer Name</FormLabel>
-                <Input 
-                  name="customer_name"
-                  value={customerFormData.customer_name}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading}
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Email</FormLabel>
-                <Input 
-                  name="email"
-                  type="email"
-                  value={customerFormData.email}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading}
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Phone</FormLabel>
-                <Input 
-                  name="phone"
-                  value={customerFormData.phone}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading}
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Address</FormLabel>
-                <Input 
-                  name="address"
-                  value={customerFormData.address}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading}
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>KWH</FormLabel>
-                <Input 
-                  name="kwh"
-                  type="number"
-                  value={customerFormData.kwh}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading}
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Loan Amount</FormLabel>
-                <Input 
-                  name="loan_amount"
-                  type="number"
-                  value={customerFormData.loan_amount}
-                  onChange={handleCustomerFormChange}
-                  isDisabled={editLoading || !hasLoanEditAccess()}
-                />
-                {!hasLoanEditAccess() && (
-                  <Text fontSize="xs" color="red.500" mt={1}>
-                    Only admin@axisogreen.in can edit the loan amount
-                  </Text>
-                )}
-              </FormControl>
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onEditClose} isDisabled={editLoading}>
-              Cancel
-            </Button>
-            <Button 
-              colorScheme="blue" 
-              onClick={handleCustomerUpdate} 
-              isLoading={editLoading}
-              loadingText="Saving"
-            >
-              Save Changes
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
+return (
+    <Box p={6} maxW="1200px" mx="auto">
+      {/* Add Payment Card/Modal */}
       <Card mt={8}>
         <CardHeader>
-          <Text fontSize="2xl" fontWeight="bold">Project Progress</Text>
+          <Text fontSize="2xl" fontWeight="bold">Add Payment</Text>
         </CardHeader>
         <CardBody>
-          <VStack align="start" spacing={4} width="full">
-            <HStack justify="space-between" width="full">
-              <Text>Status: <Badge colorScheme={project.status === 'completed' ? 'green' : 'blue'}>{project.status}</Badge></Text>
-              <HStack spacing={2}>
-                <Button 
-                  colorScheme="yellow"
-                  onClick={() => handleStageChange(PROJECT_STAGES[Math.max(0, currentStageIndex - 1)])}
-                  disabled={project.current_stage === PROJECT_STAGES[0]}
-                  isLoading={stageLoading}
-                  size="sm"
-                >
-                  ← Previous Stage
-                </Button>
-                <Button 
-                  colorScheme="blue"
-                  onClick={() => handleStageChange(PROJECT_STAGES[Math.min(PROJECT_STAGES.length - 1, currentStageIndex + 1)])}
-                  disabled={project.current_stage === PROJECT_STAGES[PROJECT_STAGES.length - 1]}
-                  isLoading={stageLoading}
-                  size="sm"
-                >
-                  Next Stage →
-                </Button>
-              </HStack>
-            </HStack>
-            <Text>Current Stage: {project.current_stage}</Text>
-            <Progress 
-              value={progress}
-              size="lg"
-              colorScheme="blue"
+          <VStack align="start" spacing={4}>
+            <FormControl isRequired>
+              <FormLabel>Payment Amount</FormLabel>
+              <Input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder="Enter payment amount"
+                max={project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))}
+                min={0}
+                step="0.01"
+                isDisabled={paymentLoading}
+              />
+              <Text fontSize="sm" color="gray.500">
+                Maximum payment amount: ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))).toLocaleString()}
+              </Text>
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel>Payment Date</FormLabel>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={handlePaymentDateChange}
+                isDisabled={paymentLoading}
+              />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel>Payment Mode</FormLabel>
+              <Select
+                value={paymentMode}
+                onChange={handlePaymentModeChange}
+                isDisabled={paymentLoading}
+              >
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Subsidy">Subsidy</option>
+              </Select>
+            </FormControl>
+            <Button
+              colorScheme="green"
               width="full"
-              borderRadius="full"
-            />
+              onClick={handlePayment}
+              isLoading={paymentLoading}
+              loadingText="Adding"
+              isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > (project.proposal_amount - (project.advance_payment + (project.paid_amount || 0))) || paymentLoading}
+            >
+              Add Payment
+            </Button>
           </VStack>
         </CardBody>
       </Card>
 
-      {canAddPayment() && (
-        <Card mt={8}>
-          <CardHeader>
-            <Text fontSize="2xl" fontWeight="bold">Add Payment</Text>
-          </CardHeader>
-          <CardBody>
-            <VStack align="start" spacing={4}>
-              <HStack width="full">
-                <Input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="Enter payment amount"
-                  max={project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))}
-                  min={0}
-                  step="0.01"
-                  isDisabled={paymentLoading}
-                />
-                <Button
-                  colorScheme="green"
-                  onClick={handlePayment}
-                  isLoading={paymentLoading}
-                  loadingText="Adding"
-                  isDisabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > (project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))) || paymentLoading}
-                >
-                  Add Payment
-                </Button>
-              </HStack>
-              <Text fontSize="sm" color="gray.500">
-                Maximum payment amount: ₹{(project.proposal_amount - (project.advance_payment + (project.paid_amount || 0) + (project.loan_amount || 0))).toLocaleString()}
-              </Text>
-            </VStack>
-          </CardBody>
-        </Card>
-      )}
-
+      {/* Payment History Section */}
       {renderPaymentHistory()}
     </Box>
   );
-};
-
-export default ProjectDetails; 
+}
+export default ProjectDetails;
