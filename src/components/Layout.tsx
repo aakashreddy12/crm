@@ -95,6 +95,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             Service Tickets
           </ChakraLink>
+          <ChakraLink
+            as={RouterLink}
+            to="/payment-receipt"
+            mr="4"
+            color={location.pathname === '/payment-receipt' ? 'green.600' : 'gray.600'}
+            fontWeight={location.pathname === '/payment-receipt' ? 'bold' : 'normal'}
+          >
+            Receipt Generator
+          </ChakraLink>
           
           {/* Show Finance link only for finance users */}
           {isFinance && (

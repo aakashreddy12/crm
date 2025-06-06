@@ -8,6 +8,7 @@ import ProjectDetails from './components/ProjectDetails';
 import Reports from './components/Reports';
 import Finance from './pages/Finance';
 import ServiceTickets from './pages/ServiceTickets';
+import PaymentReceipt from './components/PaymentReceipt';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -132,6 +133,16 @@ const App: React.FC = () => {
                   <PrivateRoute>
                     <Layout>
                       <ServiceTickets />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/payment-receipt"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <PaymentReceipt />
                     </Layout>
                   </PrivateRoute>
                 }
